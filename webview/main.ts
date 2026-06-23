@@ -61,6 +61,10 @@ let zoom = 1, panX = 0, panY = 0;
 let tooltipEl: HTMLDivElement | null = null;
 let viewportEl: HTMLDivElement | null = null;
 let gW = 400, gH = 300;
+let pathCounts = new Map<string, number>();
+let cfgEdges: CfgEdge[] = [];
+let cfgNodes: CfgNode[] = [];
+let pathsMode = false;
 
 async function render(cfg: Cfg) {
   const elk = new ELK();
@@ -68,6 +72,8 @@ async function render(cfg: Cfg) {
   root.innerHTML = `
     <div class="canvas" id="canvas">
       <div class="toolbar" id="toolbar">
+        <button class="tb-btn" id="paths-btn" title="Toggle Paths View">🔀</button>
+        <span class="tb-sep"></span>
         <button class="tb-btn" id="zoom-in" title="Zoom In">+</button>
         <span class="zoom-lvl" id="zoom-lvl">100%</span>
         <button class="tb-btn" id="zoom-out" title="Zoom Out">−</button>
@@ -127,6 +133,10 @@ async function render(cfg: Cfg) {
       }
     }
 
+    cfgNodes = active;
+    cfgEdges = egs;
+    pathCounts = computePathCounts(active, egs);
+
     shapesSvg.setAttribute('viewBox', `0 0 ${gW} ${gH}`);
     shapesSvg.style.width = gW + 'px';
     shapesSvg.style.height = gH + 'px';
@@ -145,6 +155,8 @@ async function render(cfg: Cfg) {
           bowing: 0.8,
         });
         el.classList.add('edge');
+        el.dataset.from = info?.from ?? '';
+        el.dataset.to = info?.to ?? '';
         edgesG.appendChild(el);
       }
 
@@ -230,6 +242,7 @@ async function render(cfg: Cfg) {
 
     applyTransform();
     setupInteraction(canvas);
+    setupPathsMode(canvas);
   } catch (err) {
     root.innerHTML = `<div class="error">Failed to render: ${err}</div>`;
   }
@@ -238,9 +251,12 @@ async function render(cfg: Cfg) {
 function showTooltip(e: MouseEvent, node: CfgNode) {
   if (!tooltipEl) return;
   const s = SHAPES[node.kind] ?? SHAPES.statement;
+  const pc = pathCounts.get(node.id);
+  const pathInfo = pc !== undefined ? `<div class="tt-paths">${pc} path${pc !== 1 ? 's' : ''} from entry</div>` : '';
   tooltipEl.innerHTML = `
     <div class="tt-header" style="color:${s.stroke}">${node.kind.toUpperCase()}</div>
     <div class="tt-body">${node.label ?? ''}</div>
+    ${pathInfo}
     ${node.range ? `<div class="tt-src">Line ${node.range.startLine + 1}</div>` : ''}
   `;
   tooltipEl.style.display = 'block';
@@ -323,6 +339,127 @@ function setupInteraction(canvas: HTMLElement) {
   fit.addEventListener('click', () => {
     zoom = 1; panX = 0; panY = 0;
     applyTransform();
+  });
+}
+
+function computePathCounts(nodes: CfgNode[], edges: CfgEdge[]): Map<string, number> {
+  const adj = new Map<string, string[]>();
+  const isBackEdge = new Map<string, boolean>();
+  const entryIds = nodes.filter(n => n.kind === 'entry').map(n => n.id);
+
+  for (const n of nodes) adj.set(n.id, []);
+  for (const e of edges) {
+    adj.get(e.from)?.push(e.to);
+    isBackEdge.set(e.from + '→' + e.to, e.kind === 'loop-back');
+  }
+
+  const memo = new Map<string, number>();
+  const visited = new Set<string>();
+
+  function dfs(id: string): number {
+    if (memo.has(id)) return memo.get(id)!;
+    if (entryIds.includes(id)) { memo.set(id, 1); return 1; }
+    let total = 0;
+    for (const [from, tos] of adj) {
+      for (const to of tos) {
+        if (to !== id || isBackEdge.get(from + '→' + to)) continue;
+        if (visited.has(from)) continue;
+        visited.add(from);
+        total += dfs(from);
+        visited.delete(from);
+      }
+    }
+    memo.set(id, Math.max(total, 1));
+    return memo.get(id)!;
+  }
+
+  const result = new Map<string, number>();
+  for (const n of nodes) {
+    visited.clear();
+    result.set(n.id, dfs(n.id));
+  }
+  return result;
+}
+
+function highlightPathsTo(targetId: string) {
+  const edgesG = document.getElementById('edges-g');
+  if (!edgesG) return;
+  const allEdges = edgesG.querySelectorAll('.edge');
+  const allShapes = document.querySelectorAll('.rough-shape');
+
+  if (!pathsMode || !targetId) {
+    allEdges.forEach(e => e.classList.remove('edge-dim'));
+    allShapes.forEach(s => s.classList.remove('shape-dim'));
+    return;
+  }
+
+  const adj = new Map<string, string[]>();
+  for (const e of cfgEdges) {
+    if (!adj.has(e.from)) adj.set(e.from, []);
+    adj.get(e.from)!.push(e.to);
+  }
+
+  const onPath = new Set<string>();
+  const onEdge = new Set<string>();
+  const visited = new Set<string>();
+
+  function collect(nodes: string[]) {
+    for (const id of nodes) {
+      const adjE = cfgEdges.filter(e => e.from === id);
+      for (const e of adjE) {
+        onEdge.add(e.from + '→' + e.to);
+      }
+    }
+  }
+
+  function mark(id: string, stack: string[]) {
+    if (visited.has(id)) return;
+    visited.add(id);
+    stack.push(id);
+    if (id === targetId) {
+      for (const s of stack) onPath.add(s);
+      collect(stack);
+      stack.pop();
+      visited.delete(id);
+      return;
+    }
+    const tos = adj.get(id) ?? [];
+    for (const to of tos) {
+      if (stack.includes(to)) continue;
+      mark(to, stack);
+    }
+    stack.pop();
+    visited.delete(id);
+  }
+
+  const entryIds = cfgNodes.filter(n => n.kind === 'entry').map(n => n.id);
+  for (const eid of entryIds) mark(eid, []);
+
+  allEdges.forEach((el) => {
+    const from = el.dataset.from;
+    const to = el.dataset.to;
+    const key = from + '→' + to;
+    if (!onEdge.has(key)) el.classList.add('edge-dim');
+  });
+
+  allShapes.forEach((s) => {
+    const id = (s as SVGElement).dataset.id;
+    if (id && !onPath.has(id)) s.classList.add('shape-dim');
+  });
+}
+
+function setupPathsMode(canvas: HTMLElement) {
+  const btn = document.getElementById('paths-btn')!;
+  btn.addEventListener('click', () => {
+    pathsMode = !pathsMode;
+    btn.classList.toggle('tb-active', pathsMode);
+    if (!pathsMode) highlightPathsTo('');
+  });
+
+  canvas.addEventListener('click', (e) => {
+    if (!pathsMode) return;
+    const nodeDiv = (e.target as HTMLElement).closest('.node') as HTMLElement | null;
+    if (nodeDiv) highlightPathsTo(nodeDiv.dataset.id ?? '');
   });
 }
 
