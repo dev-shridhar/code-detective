@@ -297,11 +297,10 @@ async function render(cfg: Cfg) {
       nodesDiv.appendChild(div);
     }
 
-    const canvasEl = document.getElementById('canvas');
-    if (canvasEl) {
-      panX = Math.max(40, (canvasEl.clientWidth - gW * zoom) / 2);
-      panY = Math.max(40, (canvasEl.clientHeight - gH * zoom) / 2);
-    }
+    const vw = document.documentElement.clientWidth;
+    const vh = document.documentElement.clientHeight;
+    panX = Math.max(40, (vw - gW * zoom) / 2);
+    panY = Math.max(40, (vh - gH * zoom) / 2);
     applyTransform();
     setupInteraction(canvas);
     setupPathsMode(canvas);
@@ -397,11 +396,10 @@ function setupInteraction(canvas: HTMLElement) {
 
   fit.addEventListener('click', () => {
     zoom = 1;
-    const canvasEl = document.getElementById('canvas');
-    if (canvasEl) {
-      panX = Math.max(40, (canvasEl.clientWidth - gW) / 2);
-      panY = Math.max(40, (canvasEl.clientHeight - gH) / 2);
-    } else { panX = 0; panY = 0; }
+    const vw = document.documentElement.clientWidth;
+    const vh = document.documentElement.clientHeight;
+    panX = Math.max(40, (vw - gW) / 2);
+    panY = Math.max(40, (vh - gH) / 2);
     applyTransform();
   });
 }
