@@ -7,6 +7,7 @@ export type CfgNodeKind =
   | 'return' | 'raise';
 
 export interface SrcRange {
+  uri?: string;
   startLine: number;
   startCol: number;
   endLine: number;

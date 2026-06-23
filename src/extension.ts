@@ -1,11 +1,15 @@
 import * as vscode from 'vscode';
-import { ensureParser, enclosingFunction } from './parser';
+import { ensureParser } from './parser';
 import { buildCfg } from './cfg/builder';
 import { CodeFlowPanel } from './panel';
+import { WorkspaceIndex } from './indexer';
 
 let currentPanel: CodeFlowPanel | undefined;
+let workspaceIndex: WorkspaceIndex;
 
 export function activate(context: vscode.ExtensionContext) {
+  workspaceIndex = new WorkspaceIndex();
+
   context.subscriptions.push(
     vscode.commands.registerCommand('codeflow.showProcedural', async () => {
       const editor = vscode.window.activeTextEditor;
@@ -15,10 +19,15 @@ export function activate(context: vscode.ExtensionContext) {
       }
 
       const parser = await ensureParser(context);
+
+      if (!workspaceIndex.isReady()) {
+        await workspaceIndex.build(parser);
+      }
+
       const tree = parser.parse(editor.document.getText());
       const offset = editor.document.offsetAt(editor.selection.active);
 
-      const fnNode = enclosingFunction(tree.rootNode, offset);
+      const fnNode = findEnclosingFunction(tree.rootNode, offset);
       if (!fnNode) {
         vscode.window.showInformationMessage('Cursor is not inside a function.');
         return;
@@ -31,13 +40,22 @@ export function activate(context: vscode.ExtensionContext) {
           const pos = editor.document.positionAt(offset);
           return { line: pos.line, character: pos.character };
         },
-      });
+      }, workspaceIndex, editor.document.uri.toString());
 
-      if (currentPanel) {
-        currentPanel.dispose();
-      }
+      if (currentPanel) currentPanel.dispose();
       currentPanel = CodeFlowPanel.create(context, editor.document.uri, cfg, (range) => {
-        if (range) {
+        if (!range) return;
+        if (range.uri) {
+          const uri = vscode.Uri.parse(range.uri);
+          vscode.workspace.openTextDocument(uri).then(doc => {
+            vscode.window.showTextDocument(doc).then(e => {
+              const start = new vscode.Position(range.startLine, range.startCol);
+              const end = new vscode.Position(range.endLine, range.endCol);
+              e.selection = new vscode.Selection(start, end);
+              e.revealRange(new vscode.Range(start, end), vscode.TextEditorRevealType.InCenter);
+            });
+          });
+        } else {
           const start = new vscode.Position(range.startLine, range.startCol);
           const end = new vscode.Position(range.endLine, range.endCol);
           editor.selection = new vscode.Selection(start, end);
@@ -46,6 +64,15 @@ export function activate(context: vscode.ExtensionContext) {
       });
     })
   );
+}
+
+function findEnclosingFunction(root: import('web-tree-sitter').default.SyntaxNode, offset: number): import('web-tree-sitter').default.SyntaxNode | null {
+  let node = root.descendantForIndex(offset);
+  while (node) {
+    if (node.type === 'function_definition') return node;
+    node = node.parent;
+  }
+  return null;
 }
 
 export function deactivate() {}

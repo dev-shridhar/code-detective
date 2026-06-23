@@ -3,7 +3,7 @@
   "displayName": "Procedural CodeFlow",
   "description": "Render the procedural control flow of a selected function as an interactive, collapsible graph",
   "version": "0.1.0",
-  "publisher": "opencode",
+  "publisher": "dev-shridhar",
   "engines": {
     "vscode": "^1.90.0"
   },
