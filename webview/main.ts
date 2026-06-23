@@ -205,7 +205,7 @@ async function render(cfg: Cfg) {
         g.appendChild(path);
       } else if (st.shape === 'diamond') {
         const poly = document.createElementNS(ns, 'polygon');
-        poly.setAttribute('points', diamondPoints(cx, cy+ch/2, cw, ch));
+        poly.setAttribute('points', diamondPoints(cx, cy, cw, ch));
         poly.setAttribute('fill', st.fill);
         poly.setAttribute('stroke', st.stroke);
         poly.setAttribute('stroke-width', '2');
@@ -214,7 +214,7 @@ async function render(cfg: Cfg) {
         g.appendChild(poly);
       } else if (st.shape === 'hexagon') {
         const poly = document.createElementNS(ns, 'polygon');
-        poly.setAttribute('points', hexagonPoints(cx, cy+ch/2, cw, ch));
+        poly.setAttribute('points', hexagonPoints(cx, cy, cw, ch));
         poly.setAttribute('fill', st.fill);
         poly.setAttribute('stroke', st.stroke);
         poly.setAttribute('stroke-width', '2');
@@ -256,7 +256,7 @@ async function render(cfg: Cfg) {
       txt.setAttribute('font-size', st.shape === 'diamond' ? '11' : '12');
       txt.setAttribute('font-weight', '500');
       txt.setAttribute('text-anchor', 'middle');
-      txt.setAttribute('dominant-baseline', 'central');
+      txt.setAttribute('dominant-baseline', 'middle');
       txt.setAttribute('font-family', 'var(--vscode-editor-font-family, monospace)');
       txt.textContent = truncate(node.label?.split('\n')[0] ?? '', st.shape === 'diamond' ? 12 : 24);
       g.appendChild(txt);
