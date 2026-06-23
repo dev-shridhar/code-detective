@@ -3,48 +3,140 @@ body {
   padding: 0;
   background: var(--vscode-editor-background, #1e1e1e);
   color: var(--vscode-editor-foreground, #d4d4d4);
-  font-family: var(--vscode-editor-font-family, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif);
-  overflow: auto;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  overflow: hidden;
+  user-select: none;
 }
 
 #root {
-  width: 100%;
+  width: 100vw;
   height: 100vh;
-  display: flex;
-  align-items: flex-start;
-  justify-content: center;
+  overflow: hidden;
 }
 
-svg {
+.canvas {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  cursor: grab;
+  overflow: hidden;
+}
+
+.canvas:active {
+  cursor: grabbing;
+}
+
+#svg {
   display: block;
+  width: 100%;
+  height: 100%;
+  background: var(--vscode-editor-background, #1e1e1e);
 }
 
-.loading,
+.node-shape {
+  transition: filter 0.15s ease, stroke-width 0.15s ease;
+}
+
+.node-group:hover .node-shape {
+  filter: brightness(1.3);
+  stroke-width: 3;
+}
+
+.edge {
+  transition: stroke-width 0.15s ease;
+}
+
+.edge:hover {
+  stroke-width: 3;
+}
+
+.edge-label {
+  pointer-events: none;
+}
+
+/* Toolbar */
+.toolbar {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  background: var(--vscode-sideBar-background, #252526);
+  border: 1px solid var(--vscode-sideBar-border, #3c3c3c);
+  border-radius: 8px;
+  padding: 4px 6px;
+  z-index: 10;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+}
+
+.tb-btn {
+  background: none;
+  border: none;
+  color: var(--vscode-foreground, #ccc);
+  font-size: 16px;
+  width: 28px;
+  height: 28px;
+  border-radius: 4px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.15s ease;
+}
+
+.tb-btn:hover {
+  background: var(--vscode-toolbar-hoverBackground, #3c3c3c);
+}
+
+.zoom-lvl {
+  font-size: 11px;
+  min-width: 40px;
+  text-align: center;
+  color: var(--vscode-descriptionForeground, #888);
+  font-variant-numeric: tabular-nums;
+}
+
+/* Tooltip */
+.tooltip {
+  display: none;
+  position: fixed;
+  z-index: 100;
+  background: var(--vscode-editorWidget-background, #252526);
+  border: 1px solid var(--vscode-editorWidget-border, #454545);
+  border-radius: 6px;
+  padding: 8px 12px;
+  max-width: 320px;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.4);
+  pointer-events: none;
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.tt-header {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  margin-bottom: 4px;
+  text-transform: uppercase;
+}
+
+.tt-body {
+  color: var(--vscode-editor-foreground, #d4d4d4);
+  word-break: break-word;
+  font-family: var(--vscode-editor-font-family, monospace);
+  font-size: 11px;
+}
+
+.tt-src {
+  margin-top: 4px;
+  color: var(--vscode-descriptionForeground, #888);
+  font-size: 10px;
+}
+
 .error {
-  padding: 2rem;
+  padding: 3rem;
   text-align: center;
   font-size: 14px;
-}
-
-.error {
   color: var(--vscode-errorForeground, #f14c4c);
-}
-
-.node-rect {
-  transition: opacity 0.15s ease;
-}
-
-.node-rect:hover {
-  opacity: 1;
-  stroke: var(--vscode-focusBorder, #007fd4);
-  stroke-width: 2;
-}
-
-.edge-path {
-  transition: stroke 0.15s ease;
-}
-
-.edge-path:hover {
-  stroke: var(--vscode-focusBorder, #007fd4);
-  stroke-width: 3;
 }

@@ -34,6 +34,7 @@ async function build() {
   fs.cpSync('webview/style.css', 'dist/webview/style.css', { recursive: true });
   fs.mkdirSync('media', { recursive: true });
   fs.cpSync('node_modules/tree-sitter-wasms/out/tree-sitter-python.wasm', 'media/tree-sitter-python.wasm');
+  fs.cpSync('node_modules/web-tree-sitter/tree-sitter.wasm', 'dist/tree-sitter.wasm');
   console.log('[esbuild] assets copied');
 }
 

@@ -1,13 +1,26 @@
 import * as vscode from 'vscode';
 import { Cfg, SrcRange } from './cfg/model';
 
+function getNonce(): string {
+  let text = '';
+  const possible = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+  for (let i = 0; i < 64; i++) {
+    text += possible.charAt(Math.floor(Math.random() * possible.length));
+  }
+  return text;
+}
+
 export class CodeFlowPanel {
   static readonly viewType = 'codeflow.procedural';
+  private extUri: vscode.Uri;
+  private currentCfg: Cfg | undefined;
 
   private constructor(
     private panel: vscode.WebviewPanel,
+    extUri: vscode.Uri,
     private onReveal: (range: SrcRange | undefined) => void,
   ) {
+    this.extUri = extUri;
     this.panel.onDidChangeViewState(() => this.update());
     this.panel.onDidDispose(() => this.dispose());
     this.panel.webview.onDidReceiveMessage((msg) => {
@@ -36,7 +49,7 @@ export class CodeFlowPanel {
       },
     );
 
-    const instance = new CodeFlowPanel(panel, onReveal);
+    const instance = new CodeFlowPanel(panel, context.extensionUri, onReveal);
     instance.render(cfg);
     return instance;
   }
@@ -46,11 +59,13 @@ export class CodeFlowPanel {
   }
 
   private render(cfg: Cfg) {
+    this.currentCfg = cfg;
     const panel = this.panel;
     const webview = panel.webview;
+    const nonce = getNonce();
 
     const scriptUri = webview.asWebviewUri(
-      vscode.Uri.joinPath(panel.extensionUri, 'dist', 'webview', 'main.js'),
+      vscode.Uri.joinPath(this.extUri, 'dist', 'webview', 'main.js'),
     );
 
     webview.html = `<!DOCTYPE html>
@@ -58,23 +73,23 @@ export class CodeFlowPanel {
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src ${webview.cspSource} 'unsafe-inline'; script-src ${webview.cspSource} 'unsafe-eval';">
-  <link rel="stylesheet" href="${webview.asWebviewUri(vscode.Uri.joinPath(panel.extensionUri, 'dist', 'webview', 'style.css'))}">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src ${webview.cspSource} 'unsafe-inline'; script-src 'nonce-${nonce}';">
+  <link rel="stylesheet" href="${webview.asWebviewUri(vscode.Uri.joinPath(this.extUri, 'dist', 'webview', 'style.css'))}">
   <title>Procedural CodeFlow</title>
 </head>
 <body>
   <div id="root"></div>
-  <script>
+  <script nonce="${nonce}">
     const __CFG__ = ${JSON.stringify(cfg)};
   </script>
-  <script src="${scriptUri}"></script>
+  <script nonce="${nonce}" src="${scriptUri}"></script>
 </body>
 </html>`;
   }
 
   private update() {
-    if (this.panel.visible) {
-      this.render(/* current cfg */);
+    if (this.panel.visible && this.currentCfg) {
+      this.render(this.currentCfg);
     }
   }
 }
