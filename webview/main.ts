@@ -249,17 +249,14 @@ async function render(cfg: Cfg) {
         g.appendChild(rect);
       }
 
-      const tx = st.shape === 'diamond' ? cx + cw/2 : cx + 10;
-      const ty = st.shape === 'diamond' ? cy + ch/2 + 5 : cy + 26;
-      const ta = st.shape === 'diamond' ? 'middle' : 'start';
-
       const txt = document.createElementNS(ns, 'text');
-      txt.setAttribute('x', String(tx));
-      txt.setAttribute('y', String(ty));
+      txt.setAttribute('x', String(cx + cw/2));
+      txt.setAttribute('y', String(cy + ch/2));
       txt.setAttribute('fill', '#fff');
       txt.setAttribute('font-size', st.shape === 'diamond' ? '11' : '12');
       txt.setAttribute('font-weight', '500');
-      txt.setAttribute('text-anchor', ta);
+      txt.setAttribute('text-anchor', 'middle');
+      txt.setAttribute('dominant-baseline', 'central');
       txt.setAttribute('font-family', 'var(--vscode-editor-font-family, monospace)');
       txt.textContent = truncate(node.label?.split('\n')[0] ?? '', st.shape === 'diamond' ? 12 : 24);
       g.appendChild(txt);
