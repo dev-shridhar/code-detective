@@ -74,6 +74,8 @@ class Builder {
       case N.TRY:       return this.tryStmt(node, preds);
       case N.WITH:      return this.block(node.childForFieldName('body')!, preds);
       case N.MATCH:     return this.matchStmt(node, preds);
+      case N.IMPORT:    return this.importStmt(node, preds);
+      case N.IMPORT_FROM: return this.importStmt(node, preds);
       case N.CLASS_DEF: {
         const clsName = node.childForFieldName('name')?.text;
         if (clsName) this.typeEnv.set('self', clsName);
@@ -81,6 +83,10 @@ class Builder {
       }
       default:          return this.defaultStmt(node, preds);
     }
+  }
+
+  private importStmt(_node: Parser.SyntaxNode, preds: string[]): string[] {
+    return preds;
   }
 
   private defaultStmt(node: Parser.SyntaxNode, preds: string[]): string[] {

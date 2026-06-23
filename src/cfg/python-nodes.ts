@@ -14,3 +14,5 @@ export const CASE = 'case_clause';
 export const FUNCTION_DEF = 'function_definition';
 export const CLASS_DEF = 'class_definition';
 export const EXCEPT_HANDLER = 'except_clause';
+export const IMPORT = 'import_statement';
+export const IMPORT_FROM = 'import_from_statement';
