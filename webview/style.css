@@ -98,6 +98,11 @@ body {
   transition: filter 0.15s ease;
 }
 
+/* Dimmed shapes when in paths mode — not on selected path */
+.shape-dim {
+  filter: brightness(0.35) saturate(0.2) !important;
+}
+
 /* Edge styles */
 .edge {
   transition: opacity 0.15s ease;
@@ -105,6 +110,11 @@ body {
 
 .edge:hover {
   opacity: 0.8;
+}
+
+/* Dimmed edges when in paths mode */
+.edge-dim {
+  opacity: 0.1 !important;
 }
 
 .edge-label {
@@ -145,6 +155,18 @@ body {
 
 .tb-btn:hover {
   background: var(--vscode-toolbar-hoverBackground, #3c3c3c);
+}
+
+.tb-active {
+  background: var(--vscode-button-background, #0e639c) !important;
+  color: var(--vscode-button-foreground, #fff) !important;
+}
+
+.tb-sep {
+  width: 1px;
+  height: 20px;
+  background: var(--vscode-sideBar-border, #3c3c3c);
+  margin: 0 2px;
 }
 
 .zoom-lvl {
@@ -190,6 +212,15 @@ body {
   margin-top: 4px;
   color: var(--vscode-descriptionForeground, #888);
   font-size: 10px;
+}
+
+.tt-paths {
+  margin-top: 6px;
+  color: var(--vscode-chart-yellow, #e5c07b);
+  font-size: 11px;
+  font-weight: 600;
+  border-top: 1px solid var(--vscode-sideBar-border, #3c3c3c);
+  padding-top: 5px;
 }
 
 .error {
