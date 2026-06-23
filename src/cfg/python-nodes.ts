@@ -1,0 +1,16 @@
+export const IF = 'if_statement';
+export const ELIF = 'elif_clause';
+export const ELSE = 'else_clause';
+export const FOR = 'for_statement';
+export const WHILE = 'while_statement';
+export const RETURN = 'return_statement';
+export const RAISE = 'raise_statement';
+export const BREAK = 'break_statement';
+export const CONTINUE = 'continue_statement';
+export const TRY = 'try_statement';
+export const WITH = 'with_statement';
+export const MATCH = 'match_statement';
+export const CASE = 'case_clause';
+export const FUNCTION_DEF = 'function_definition';
+export const CLASS_DEF = 'class_definition';
+export const EXCEPT_HANDLER = 'except_clause';

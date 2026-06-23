@@ -1,0 +1,41 @@
+const esbuild = require('esbuild');
+const fs = require('fs');
+const path = require('path');
+
+const args = process.argv.slice(2);
+const watch = args.includes('--watch');
+const production = args.includes('--production');
+
+async function build() {
+  const ctx = await esbuild.context({
+    entryPoints: {
+      extension: 'src/extension.ts',
+      'webview/main': 'webview/main.ts',
+    },
+    outdir: 'dist',
+    bundle: true,
+    external: ['vscode'],
+    format: 'cjs',
+    platform: 'node',
+    sourcemap: !production,
+    minify: production,
+    plugins: [],
+  });
+
+  if (watch) {
+    await ctx.watch();
+    console.log('[esbuild] watching...');
+  } else {
+    await ctx.rebuild();
+    await ctx.dispose();
+    console.log('[esbuild] build complete');
+  }
+
+  fs.cpSync('webview/style.css', 'dist/webview/style.css', { recursive: true });
+  console.log('[esbuild] assets copied');
+}
+
+build().catch(e => {
+  console.error(e);
+  process.exit(1);
+});

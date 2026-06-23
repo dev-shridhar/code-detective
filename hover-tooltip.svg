@@ -1,0 +1,47 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 680 312" width="680" font-family="system-ui, -apple-system, 'Segoe UI', sans-serif">
+  <style>
+    .tile{ fill:#F1EFE8; stroke:#5F5E5A; stroke-width:.7; }
+    .tiletx{ fill:#2C2C2A; font-size:14px; font-weight:600; }
+    .hint{ fill:#5F5E5A; font-size:11px; }
+    .card{ fill:#FFFFFF; stroke:#B4B2A9; stroke-width:.8; }
+    .mono{ font-family:'SF Mono','Consolas',monospace; font-size:13px; fill:#2C2C2A; }
+    .kw{ fill:#534AB7; } .ty{ fill:#185FA5; }
+    .pname{ font-family:'SF Mono','Consolas',monospace; font-size:12px; fill:#185FA5; }
+    .pdesc{ fill:#5F5E5A; font-size:13px; }
+    .doc{ fill:#2C2C2A; font-size:13px; }
+    .foot{ fill:#888780; font-size:12px; }
+    .div{ stroke:#E2DFD6; stroke-width:.8; }
+    .lead{ stroke:#B4B2A9; stroke-width:.8; stroke-dasharray:3 3; fill:none; }
+    @media (prefers-color-scheme: dark){
+      .tile{ fill:#3a3a37; stroke:#B4B2A9; } .tiletx{ fill:#ECEAE0; } .hint{ fill:#B4B2A9; }
+      .card{ fill:#262624; stroke:#5F5E5A; }
+      .mono,.doc{ fill:#ECEAE0; } .kw{ fill:#AFA9EC; } .ty,.pname{ fill:#85B7EB; }
+      .pdesc{ fill:#B4B2A9; } .foot{ fill:#888780; } .div{ stroke:#3d3d3a; } .lead{ stroke:#5F5E5A; }
+    }
+  </style>
+
+  <rect class="tile" x="40" y="30" width="190" height="40" rx="8"/>
+  <text class="tiletx" x="56" y="50" dominant-baseline="central">validateCard()</text>
+  <text class="hint" x="160" y="50" dominant-baseline="central">&#9432; hover</text>
+
+  <path class="lead" d="M70 70 L70 92"/>
+
+  <rect class="card" x="40" y="92" width="540" height="196" rx="12"/>
+
+  <text class="mono" x="60" y="120" dominant-baseline="central"><tspan class="kw">def</tspan> validate_card(card: <tspan class="ty">Card</tspan>, *, strict: <tspan class="ty">bool</tspan> = False) -&gt; <tspan class="ty">bool</tspan></text>
+
+  <line class="div" x1="60" y1="138" x2="560" y2="138"/>
+
+  <text class="pname" x="60" y="160" dominant-baseline="central">card: Card</text>
+  <text class="pdesc" x="170" y="160" dominant-baseline="central">the payment card to check</text>
+  <text class="pname" x="60" y="184" dominant-baseline="central">strict: bool</text>
+  <text class="pdesc" x="170" y="184" dominant-baseline="central">also reject cards expiring this month</text>
+
+  <line class="div" x1="60" y1="202" x2="560" y2="202"/>
+
+  <text class="doc" x="60" y="224" dominant-baseline="central">Validate a payment card. Returns True if it passes the Luhn</text>
+  <text class="doc" x="60" y="244" dominant-baseline="central">checksum and is not expired.</text>
+
+  <line class="div" x1="60" y1="260" x2="560" y2="260"/>
+  <text class="foot" x="60" y="276" dominant-baseline="central">validate.py:8 &#183; via language server hover (optional) / Tree-sitter (default)</text>
+</svg>

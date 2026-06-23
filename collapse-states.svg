@@ -1,0 +1,53 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 680 300" width="680" font-family="system-ui, -apple-system, 'Segoe UI', sans-serif">
+  <style>
+    .lbl{ fill:#2C2C2A; font-size:13px; font-weight:600; }
+    .sub{ fill:#5F5E5A; font-size:12px; }
+    .cap{ fill:#5F5E5A; font-size:12px; font-weight:600; letter-spacing:.04em; }
+    .proc{ fill:#F1EFE8; stroke:#5F5E5A; stroke-width:.7; }
+    .head{ fill:#EEEDFE; stroke:#534AB7; stroke-width:.7; }
+    .region{ fill:none; stroke:#B4B2A9; stroke-width:.8; stroke-dasharray:5 4; }
+    .edge{ stroke:#73726c; stroke-width:1.5; fill:none; }
+    .badge{ fill:#534AB7; } .badgetx{ fill:#EEEDFE; font-size:11px; font-weight:600; }
+    .arrow{ stroke:#5F5E5A; stroke-width:1.5; fill:none; }
+    @media (prefers-color-scheme: dark){
+      .lbl{ fill:#ECEAE0; } .sub,.cap{ fill:#B4B2A9; }
+      .proc{ fill:#3a3a37; stroke:#B4B2A9; }
+      .head{ fill:#3C3489; stroke:#AFA9EC; }
+      .region{ stroke:#888780; }
+      .edge,.arrow{ stroke:#9c9a92; }
+      .badge{ fill:#AFA9EC; } .badgetx{ fill:#26215C; }
+    }
+  </style>
+  <defs>
+    <marker id="ah2" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M2 1L8 5L2 9" fill="none" stroke="context-stroke" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></marker>
+  </defs>
+
+  <text class="cap" x="160" y="24" text-anchor="middle">EXPANDED</text>
+  <path class="edge" d="M160 80 L160 94" marker-end="url(#ah2)"/>
+  <path class="edge" d="M160 130 L160 138" marker-end="url(#ah2)"/>
+  <path class="edge" d="M160 174 L160 182" marker-end="url(#ah2)"/>
+  <path class="edge" d="M160 218 L160 232" marker-end="url(#ah2)"/>
+  <rect class="region" x="68" y="90" width="184" height="134" rx="10"/>
+  <rect class="head" x="60" y="40" width="200" height="40" rx="8"/>
+  <text class="lbl" x="160" y="60" text-anchor="middle" dominant-baseline="central">for attempt in retries</text>
+  <rect class="proc" x="80" y="96" width="160" height="34" rx="7"/>
+  <text class="sub" x="160" y="113" text-anchor="middle" dominant-baseline="central">build request</text>
+  <rect class="proc" x="80" y="140" width="160" height="34" rx="7"/>
+  <text class="sub" x="160" y="157" text-anchor="middle" dominant-baseline="central">call gateway</text>
+  <rect class="proc" x="80" y="184" width="160" height="34" rx="7"/>
+  <text class="sub" x="160" y="201" text-anchor="middle" dominant-baseline="central">check response</text>
+  <rect class="proc" x="60" y="232" width="200" height="40" rx="8"/>
+  <text class="lbl" x="160" y="252" text-anchor="middle" dominant-baseline="central">logTransaction()</text>
+
+  <path class="arrow" d="M296 150 L372 150" marker-end="url(#ah2)"/>
+  <text class="cap" x="334" y="142" text-anchor="middle">collapse</text>
+
+  <text class="cap" x="500" y="24" text-anchor="middle">COLLAPSED</text>
+  <path class="edge" d="M500 100 L500 128" marker-end="url(#ah2)"/>
+  <rect class="head" x="400" y="60" width="200" height="40" rx="8"/>
+  <text class="lbl" x="488" y="80" text-anchor="middle" dominant-baseline="central">for attempt in retries</text>
+  <rect class="badge" x="566" y="66" width="30" height="18" rx="9"/>
+  <text class="badgetx" x="581" y="75" text-anchor="middle" dominant-baseline="central">+3</text>
+  <rect class="proc" x="400" y="130" width="200" height="40" rx="8"/>
+  <text class="lbl" x="500" y="150" text-anchor="middle" dominant-baseline="central">logTransaction()</text>
+</svg>

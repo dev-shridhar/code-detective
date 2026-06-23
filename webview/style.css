@@ -1,0 +1,50 @@
+body {
+  margin: 0;
+  padding: 0;
+  background: var(--vscode-editor-background, #1e1e1e);
+  color: var(--vscode-editor-foreground, #d4d4d4);
+  font-family: var(--vscode-editor-font-family, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif);
+  overflow: auto;
+}
+
+#root {
+  width: 100%;
+  height: 100vh;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+}
+
+svg {
+  display: block;
+}
+
+.loading,
+.error {
+  padding: 2rem;
+  text-align: center;
+  font-size: 14px;
+}
+
+.error {
+  color: var(--vscode-errorForeground, #f14c4c);
+}
+
+.node-rect {
+  transition: opacity 0.15s ease;
+}
+
+.node-rect:hover {
+  opacity: 1;
+  stroke: var(--vscode-focusBorder, #007fd4);
+  stroke-width: 2;
+}
+
+.edge-path {
+  transition: stroke 0.15s ease;
+}
+
+.edge-path:hover {
+  stroke: var(--vscode-focusBorder, #007fd4);
+  stroke-width: 3;
+}

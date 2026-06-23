@@ -1,0 +1,52 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 680 460" width="680" font-family="system-ui, -apple-system, 'Segoe UI', sans-serif">
+  <style>
+    .lbl{ fill:#2C2C2A; font-size:14px; font-weight:600; }
+    .sub{ fill:#5F5E5A; font-size:12px; }
+    .elbl{ fill:#5F5E5A; font-size:12px; }
+    .proc{ fill:#F1EFE8; stroke:#5F5E5A; stroke-width:.7; }
+    .branch{ fill:#FAEEDA; stroke:#BA7517; stroke-width:.7; }
+    .err{ fill:#FCEBEB; stroke:#A32D2D; stroke-width:.7; }
+    .ok{ fill:#EAF3DE; stroke:#3B6D11; stroke-width:.7; }
+    .edge{ stroke:#73726c; stroke-width:1.5; fill:none; }
+    @media (prefers-color-scheme: dark){
+      .lbl{ fill:#ECEAE0; } .sub,.elbl{ fill:#B4B2A9; }
+      .proc{ fill:#3a3a37; stroke:#B4B2A9; }
+      .branch{ fill:#633806; stroke:#FAC775; }
+      .err{ fill:#791F1F; stroke:#F09595; }
+      .ok{ fill:#27500A; stroke:#C0DD97; }
+      .edge{ stroke:#9c9a92; }
+    }
+  </style>
+  <defs>
+    <marker id="ah" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M2 1L8 5L2 9" fill="none" stroke="context-stroke" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></marker>
+  </defs>
+
+  <path class="edge" d="M330 88 L330 114" marker-end="url(#ah)"/>
+  <path class="edge" d="M400 150 L466 150" marker-end="url(#ah)"/>
+  <path class="edge" d="M330 184 L330 208" marker-end="url(#ah)"/>
+  <path class="edge" d="M330 258 L330 286" marker-end="url(#ah)"/>
+  <path class="edge" d="M330 332 L330 366" marker-end="url(#ah)"/>
+  <path class="edge" d="M420 222 C458 222 458 246 422 246" marker-end="url(#ah)" stroke="#BA7517"/>
+  <text class="elbl" x="433" y="142" text-anchor="middle">no</text>
+  <text class="elbl" x="344" y="200">yes</text>
+  <text class="elbl" x="466" y="238">retry on timeout</text>
+
+  <rect class="proc" x="240" y="44" width="180" height="44" rx="8"/>
+  <text class="lbl" x="330" y="66" text-anchor="middle" dominant-baseline="central">validateCard()</text>
+
+  <polygon class="branch" points="330,116 400,150 330,184 260,150"/>
+  <text class="lbl" x="330" y="150" text-anchor="middle" dominant-baseline="central">card valid?</text>
+
+  <rect class="err" x="468" y="128" width="150" height="44" rx="8"/>
+  <text class="lbl" x="543" y="150" text-anchor="middle" dominant-baseline="central">return error</text>
+
+  <rect class="proc" x="240" y="210" width="180" height="48" rx="8"/>
+  <text class="lbl" x="330" y="226" text-anchor="middle" dominant-baseline="central">chargeAPI()</text>
+  <text class="sub" x="330" y="245" text-anchor="middle" dominant-baseline="central">loops until success</text>
+
+  <rect class="proc" x="240" y="288" width="180" height="44" rx="8"/>
+  <text class="lbl" x="330" y="310" text-anchor="middle" dominant-baseline="central">logTransaction()</text>
+
+  <rect class="ok" x="240" y="368" width="180" height="44" rx="22"/>
+  <text class="lbl" x="330" y="390" text-anchor="middle" dominant-baseline="central">return receipt</text>
+</svg>

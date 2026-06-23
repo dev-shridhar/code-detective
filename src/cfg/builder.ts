@@ -1,0 +1,293 @@
+import Parser from 'web-tree-sitter';
+import { Cfg, CfgNode, CfgEdge, CfgRegion, SrcRange } from './model';
+import * as N from './python-nodes';
+import { TextDocLike } from '../parser';
+
+interface LoopCtx {
+  continueTo: string;
+  breakTo: string;
+}
+
+class Builder {
+  nodes: CfgNode[] = [];
+  edges: CfgEdge[] = [];
+  regions: CfgRegion[] = [];
+  private seq = 0;
+  private loops: LoopCtx[] = [];
+  readonly exitId = 'exit';
+
+  constructor(private doc: TextDocLike) {
+    this.add({ id: 'entry', kind: 'entry', label: 'entry' });
+    this.add({ id: this.exitId, kind: 'exit', label: 'exit' });
+  }
+
+  private id(): string {
+    return `n${this.seq++}`;
+  }
+
+  private add(n: CfgNode): string {
+    this.nodes.push(n);
+    return n.id;
+  }
+
+  private link(from: string[], to: string, kind: CfgEdge['kind'] = 'normal', label?: string): void {
+    for (const f of from) {
+      this.edges.push({ from: f, to, kind, label });
+    }
+  }
+
+  block(block: Parser.SyntaxNode, preds: string[]): string[] {
+    let frontier = preds;
+    for (const stmt of block.namedChildren) {
+      frontier = this.statement(stmt, frontier);
+      if (frontier.length === 0) break;
+    }
+    return frontier;
+  }
+
+  statement(node: Parser.SyntaxNode, preds: string[]): string[] {
+    switch (node.type) {
+      case N.IF:
+        return this.ifStmt(node, preds);
+      case N.FOR:
+        return this.forStmt(node, preds);
+      case N.WHILE:
+        return this.whileStmt(node, preds);
+      case N.RETURN:
+        return this.terminator(node, preds, 'return');
+      case N.RAISE:
+        return this.terminator(node, preds, 'raise');
+      case N.BREAK:
+        this.link(preds, this.loops.at(-1)!.breakTo);
+        return [];
+      case N.CONTINUE:
+        this.link(preds, this.loops.at(-1)!.continueTo);
+        return [];
+      case N.TRY:
+        return this.tryStmt(node, preds);
+      case N.WITH:
+        return this.block(node.childForFieldName('body')!, preds);
+      case N.MATCH:
+        return this.matchStmt(node, preds);
+      default: {
+        const id = this.add({
+          id: this.id(),
+          kind: 'statement',
+          label: this.text(node),
+          range: this.range(node),
+        });
+        this.link(preds, id);
+        return [id];
+      }
+    }
+  }
+
+  private ifStmt(node: Parser.SyntaxNode, preds: string[]): string[] {
+    const condId = this.add({
+      id: this.id(),
+      kind: 'branch',
+      label: this.text(node.childForFieldName('condition')!),
+      range: this.range(node),
+    });
+    this.link(preds, condId);
+
+    const consequence = node.childForFieldName('consequence')!;
+    const trueFrontier = this.block(consequence, [condId]);
+    this.edges
+      .filter(e => e.from === condId && trueFrontier.includes(e.to))
+      .forEach(e => (e.kind = 'true'));
+
+    let falsePreds: string[] = [condId];
+    let elseFrontier: string[] = [];
+    let sawElse = false;
+
+    for (const alt of node.childrenForFieldName('alternative')) {
+      if (alt.type === N.ELIF) {
+        const cId = this.add({
+          id: this.id(),
+          kind: 'branch',
+          label: this.text(alt.childForFieldName('condition')!),
+          range: this.range(alt),
+        });
+        this.link(falsePreds, cId, 'false');
+        const armFrontier = this.block(alt.childForFieldName('consequence')!, [cId]);
+        this.edges
+          .filter(e => e.from === cId && armFrontier.includes(e.to))
+          .forEach(e => (e.kind = 'true'));
+        elseFrontier.push(...armFrontier);
+        falsePreds = [cId];
+      } else if (alt.type === N.ELSE) {
+        sawElse = true;
+        elseFrontier.push(...this.block(alt.childForFieldName('body')!, falsePreds));
+      }
+    }
+
+    if (!sawElse) {
+      this.link(falsePreds, condId, 'false');
+    }
+
+    const falseExit = sawElse ? elseFrontier : [...falsePreds, ...elseFrontier];
+    return [...trueFrontier, ...falseExit];
+  }
+
+  private forStmt(node: Parser.SyntaxNode, preds: string[]): string[] {
+    const left = node.childForFieldName('left');
+    const right = node.childForFieldName('right');
+    const headerId = this.add({
+      id: this.id(),
+      kind: 'loop',
+      label: `for ${this.text(left)} in ${this.text(right)}`,
+      range: this.range(node),
+    });
+    this.link(preds, headerId);
+
+    const afterId = this.add({ id: this.id(), kind: 'merge', label: '' });
+    this.loops.push({ continueTo: headerId, breakTo: afterId });
+
+    const body = node.childForFieldName('body')!;
+    const bodyFrontier = this.block(body, [headerId]);
+    this.edges
+      .filter(e => e.from === headerId && bodyFrontier.includes(e.to))
+      .forEach(e => (e.kind = 'true'));
+
+    this.link(bodyFrontier, headerId, 'loop-back');
+
+    this.loops.pop();
+
+    const elseClause = node.childForFieldName('alternative');
+    if (elseClause) {
+      const elseFrontier = this.block(elseClause.childForFieldName('body')!, [headerId]);
+      this.edges
+        .filter(e => e.from === headerId && elseFrontier.includes(e.to))
+        .forEach(e => (e.kind = 'false'));
+      this.link(elseFrontier, afterId);
+    } else {
+      this.link([headerId], afterId, 'false');
+    }
+
+    return [afterId];
+  }
+
+  private whileStmt(node: Parser.SyntaxNode, preds: string[]): string[] {
+    const condition = node.childForFieldName('condition');
+    const headerId = this.add({
+      id: this.id(),
+      kind: 'loop',
+      label: `while ${this.text(condition)}`,
+      range: this.range(node),
+    });
+    this.link(preds, headerId);
+
+    const afterId = this.add({ id: this.id(), kind: 'merge', label: '' });
+    this.loops.push({ continueTo: headerId, breakTo: afterId });
+
+    const body = node.childForFieldName('body')!;
+    const bodyFrontier = this.block(body, [headerId]);
+    this.edges
+      .filter(e => e.from === headerId && bodyFrontier.includes(e.to))
+      .forEach(e => (e.kind = 'true'));
+
+    this.link(bodyFrontier, headerId, 'loop-back');
+
+    this.loops.pop();
+
+    const elseClause = node.childForFieldName('alternative');
+    if (elseClause) {
+      const elseFrontier = this.block(elseClause.childForFieldName('body')!, [headerId]);
+      this.edges
+        .filter(e => e.from === headerId && elseFrontier.includes(e.to))
+        .forEach(e => (e.kind = 'false'));
+      this.link(elseFrontier, afterId);
+    } else {
+      this.link([headerId], afterId, 'false');
+    }
+
+    return [afterId];
+  }
+
+  private terminator(node: Parser.SyntaxNode, preds: string[], kind: 'return' | 'raise'): string[] {
+    const id = this.add({
+      id: this.id(),
+      kind,
+      label: this.text(node),
+      range: this.range(node),
+    });
+    this.link(preds, id);
+    this.link([id], this.exitId);
+    return [];
+  }
+
+  private tryStmt(node: Parser.SyntaxNode, preds: string[]): string[] {
+    const body = node.childForFieldName('body')!;
+    const bodyFrontier = this.block(body, preds);
+
+    const handlerFrontiers: string[] = [];
+    for (const ex of node.childrenForFieldName('handler')) {
+      const hId = this.add({
+        id: this.id(),
+        kind: 'statement',
+        label: this.text(ex.firstNamedChild!),
+        range: this.range(ex),
+      });
+      const firstBodyNode = body.firstNamedChild;
+      const source = firstBodyNode ? (bodyFrontier[0] ?? preds[0]) : preds[0];
+      this.link([source], hId, 'exception');
+      const handlerBody = ex.childForFieldName('consequence') ?? ex;
+      handlerFrontiers.push(...this.block(handlerBody, [hId]));
+    }
+
+    return [...bodyFrontier, ...handlerFrontiers];
+  }
+
+  private matchStmt(node: Parser.SyntaxNode, preds: string[]): string[] {
+    const subject = node.childForFieldName('subject');
+    const subjId = this.add({
+      id: this.id(),
+      kind: 'branch',
+      label: `match ${this.text(subject)}`,
+      range: this.range(node),
+    });
+    this.link(preds, subjId);
+
+    const out: string[] = [];
+    const cases = node.namedChildren.filter(n => n.type === N.CASE);
+    for (const c of cases) {
+      const caseFrontier = this.block(c, [subjId]);
+      this.edges
+        .filter(e => e.from === subjId && e.to === c.firstNamedChild?.id)
+        .forEach(e => (e.kind = 'case'));
+      out.push(...caseFrontier);
+    }
+    return out;
+  }
+
+  private text(n: Parser.SyntaxNode | null): string {
+    if (!n) return '';
+    const text = n.text;
+    const oneLine = text.split('\n')[0];
+    return oneLine.length > 80 ? oneLine.slice(0, 77) + '...' : oneLine;
+  }
+
+  private range(n: Parser.SyntaxNode): SrcRange {
+    return {
+      startLine: n.startPosition.row,
+      startCol: n.startPosition.column,
+      endLine: n.endPosition.row,
+      endCol: n.endPosition.column,
+    };
+  }
+}
+
+export function buildCfg(fn: Parser.SyntaxNode, doc: TextDocLike): Cfg {
+  const b = new Builder(doc);
+  const body = fn.childForFieldName('body')!;
+  const frontier = b.block(body, ['entry']);
+  b.link(frontier, b.exitId);
+  return {
+    nodes: b.nodes,
+    edges: b.edges,
+    regions: b.regions,
+    entryId: 'entry',
+    exitId: b.exitId,
+  };
+}

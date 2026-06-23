@@ -1,0 +1,49 @@
+{
+  "name": "procedural-codeflow",
+  "displayName": "Procedural CodeFlow",
+  "description": "Render the procedural control flow of a selected function as an interactive, collapsible graph",
+  "version": "0.1.0",
+  "publisher": "opencode",
+  "engines": {
+    "vscode": "^1.90.0"
+  },
+  "categories": [
+    "Visualization",
+    "Programming Languages"
+  ],
+  "activationEvents": [],
+  "main": "./dist/extension.js",
+  "contributes": {
+    "commands": [
+      {
+        "command": "codeflow.showProcedural",
+        "title": "CodeFlow: Show procedural flow for function at cursor"
+      }
+    ],
+    "menus": {
+      "editor/context": [
+        {
+          "command": "codeflow.showProcedural",
+          "when": "editorLangId == python",
+          "group": "navigation"
+        }
+      ]
+    }
+  },
+  "scripts": {
+    "build": "node esbuild.js",
+    "watch": "node esbuild.js --watch",
+    "lint": "eslint src --ext ts",
+    "vscode:prepublish": "npm run build"
+  },
+  "devDependencies": {
+    "@types/vscode": "^1.90.0",
+    "@types/node": "^20.0.0",
+    "esbuild": "^0.24.0",
+    "typescript": "^5.5.0"
+  },
+  "dependencies": {
+    "web-tree-sitter": "^0.22.0",
+    "elkjs": "^0.9.3"
+  }
+}
