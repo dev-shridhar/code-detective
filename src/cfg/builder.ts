@@ -318,8 +318,7 @@ class Builder {
 
   private text(n: Parser.SyntaxNode | null): string {
     if (!n) return '';
-    const t = n.text;
-    return t.split('\n')[0].length > 80 ? t.split('\n')[0].slice(0, 77) + '...' : t.split('\n')[0];
+    return n.text;
   }
 
   private range(n: Parser.SyntaxNode): SrcRange {
