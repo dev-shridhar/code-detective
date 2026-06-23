@@ -73,12 +73,6 @@ let cfgEdges: CfgEdge[] = [];
 let cfgNodes: CfgNode[] = [];
 let pathsMode = false;
 let currentCfg: Cfg | null = null;
-const nodeOffsets = new Map<string, {dx: number; dy: number}>();
-let dragNodeId: string | null = null;
-let dragStartX = 0, dragStartY = 0;
-let dragOrigDx = 0, dragOrigDy = 0;
-let roughInstance: any = null;
-let wasDragMove = false;
 
 async function render(cfg: Cfg) {
   const elk = new ELK();
@@ -115,7 +109,6 @@ async function render(cfg: Cfg) {
   tooltipEl = tooltip;
 
   const rc = rough.svg(shapesSvg);
-  roughInstance = rc;
 
   try {
     currentCfg = cfg;
@@ -300,22 +293,8 @@ async function render(cfg: Cfg) {
         });
       } else if (node.range) {
         div.style.cursor = 'pointer';
-        div.addEventListener('click', () => {
-          if (wasDragMove) { wasDragMove = false; return; }
-          vscode.postMessage({ type: 'reveal', range: node.range });
-        });
+        div.addEventListener('click', () => vscode.postMessage({ type: 'reveal', range: node.range }));
       }
-
-      div.addEventListener('mousedown', (e) => {
-        e.stopPropagation();
-        dragNodeId = node.id;
-        const off = nodeOffsets.get(node.id) ?? {dx: 0, dy: 0};
-        dragOrigDx = off.dx;
-        dragOrigDy = off.dy;
-        dragStartX = e.clientX;
-        dragStartY = e.clientY;
-        div.style.cursor = 'grabbing';
-      });
 
       nodesDiv.appendChild(div);
     }
@@ -385,16 +364,6 @@ function setupInteraction(canvas: HTMLElement) {
   });
 
   window.addEventListener('mousemove', (e) => {
-    if (dragNodeId) {
-      const dx = (e.clientX - dragStartX) / zoom + dragOrigDx;
-      const dy = (e.clientY - dragStartY) / zoom + dragOrigDy;
-      if (Math.abs(e.clientX - dragStartX) > 3 || Math.abs(e.clientY - dragStartY) > 3) wasDragMove = true;
-      nodeOffsets.set(dragNodeId, {dx, dy});
-      const div = document.querySelector(`.node[data-id="${CSS.escape(dragNodeId)}"]`) as HTMLElement | null;
-      if (div) div.style.transform = `translate(${dx}px, ${dy}px)`;
-      redrawEdges();
-      return;
-    }
     if (!dragging) return;
     panX += (e.clientX - lastX);
     panY += (e.clientY - lastY);
@@ -404,12 +373,6 @@ function setupInteraction(canvas: HTMLElement) {
   });
 
   window.addEventListener('mouseup', () => {
-    if (dragNodeId) {
-      const div = document.querySelector(`.node[data-id="${CSS.escape(dragNodeId)}"]`) as HTMLElement | null;
-      if (div) div.style.cursor = '';
-      dragNodeId = null;
-      return;
-    }
     dragging = false;
     canvas.style.cursor = 'grab';
   });
@@ -585,69 +548,6 @@ function reroute(cfg: Cfg, edges: CfgEdge[]) {
   return edges.map(e => ({ ...e, from: header.get(e.from) ?? e.from, to: header.get(e.to) ?? e.to }));
 }
 
-function getNodePos(id: string): {left: number; top: number; width: number; height: number} | null {
-  const div = document.querySelector(`.node[data-id="${CSS.escape(id)}"]`) as HTMLElement | null;
-  if (!div) return null;
-  const off = nodeOffsets.get(id) ?? {dx: 0, dy: 0};
-  return {
-    left: parseFloat(div.style.left) + off.dx,
-    top: parseFloat(div.style.top) + off.dy,
-    width: parseFloat(div.style.width),
-    height: parseFloat(div.style.height),
-  };
-}
-
-function redrawEdges() {
-  const g = document.getElementById('edges-g');
-  if (!g || !roughInstance) return;
-  while (g.firstChild) g.removeChild(g.firstChild);
-
-  for (const e of cfgEdges) {
-    const src = getNodePos(e.from);
-    const tgt = getNodePos(e.to);
-    if (!src || !tgt) continue;
-
-    const sx = src.left + src.width;
-    const sy = src.top + src.height / 2;
-    const tx = tgt.left;
-    const ty = tgt.top + tgt.height / 2;
-    const mx = (sx + tx) / 2;
-    const d = `M ${sx} ${sy} C ${mx} ${sy}, ${mx} ${ty}, ${tx} ${ty}`;
-
-    const st = EDGE_STYLES[e.kind ?? 'normal'] ?? EDGE_STYLES.normal;
-    const el = roughInstance.path(d, { stroke: st.color, strokeWidth: 2, roughness: 1, bowing: 0.8 });
-    el.classList.add('edge');
-    try { el.dataset.from = e.from; el.dataset.to = e.to; } catch (_) {}
-    g.appendChild(el);
-
-    const lbl = e.label ?? LABEL[e.kind ?? ''] ?? '';
-    if (lbl) {
-      const mp = { x: mx, y: (sy + ty) / 2 };
-      const tw = lbl.length * 6.5 + 12;
-      const bg = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
-      bg.setAttribute('x', String(mp.x - tw / 2));
-      bg.setAttribute('y', String(mp.y - 9));
-      bg.setAttribute('width', String(tw));
-      bg.setAttribute('height', '18');
-      bg.setAttribute('rx', '4');
-      bg.setAttribute('fill', '#252526');
-      bg.setAttribute('opacity', '0.85');
-      bg.classList.add('edge-label-bg');
-      g.appendChild(bg);
-
-      const t = document.createElementNS('http://www.w3.org/2000/svg', 'text');
-      t.setAttribute('x', String(mp.x));
-      t.setAttribute('y', String(mp.y + 4));
-      t.setAttribute('fill', st.color);
-      t.setAttribute('font-size', '11');
-      t.setAttribute('font-weight', '700');
-      t.setAttribute('text-anchor', 'middle');
-      t.textContent = lbl;
-      t.classList.add('edge-label');
-      g.appendChild(t);
-    }
-  }
-}
 
 document.addEventListener('DOMContentLoaded', () => {
   if (typeof __CFG__ !== 'undefined') render(__CFG__);
