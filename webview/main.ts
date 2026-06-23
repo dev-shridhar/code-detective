@@ -167,12 +167,23 @@ async function render(cfg: Cfg) {
       const lbl = LABEL[info?.kind ?? ''] ?? '';
       if (lbl) {
         const mp = midPoint(e.sections[e.sections.length - 1]);
+        const bg = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+        bg.setAttribute('x', String(mp.x - 18));
+        bg.setAttribute('y', String(mp.y - 18));
+        bg.setAttribute('width', '36');
+        bg.setAttribute('height', '18');
+        bg.setAttribute('rx', '4');
+        bg.setAttribute('fill', 'var(--vscode-editor-background, #1e1e1e)');
+        bg.setAttribute('opacity', '0.85');
+        bg.classList.add('edge-label-bg');
+        edgesG.appendChild(bg);
+
         const t = document.createElementNS('http://www.w3.org/2000/svg', 'text');
         t.setAttribute('x', String(mp.x));
-        t.setAttribute('y', String(mp.y - 6));
+        t.setAttribute('y', String(mp.y - 4));
         t.setAttribute('fill', st.color);
         t.setAttribute('font-size', '11');
-        t.setAttribute('font-weight', '600');
+        t.setAttribute('font-weight', '700');
         t.setAttribute('text-anchor', 'middle');
         t.textContent = lbl;
         t.classList.add('edge-label');
