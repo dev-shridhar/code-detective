@@ -16,6 +16,7 @@ function withUri(r: { startLine: number; startCol: number; endLine: number; endC
 
 export async function buildErd(
   parser: Parser,
+  sourceUri?: vscode.Uri,
   index?: Map<string, { uri: vscode.Uri; source: string; node: Parser.SyntaxNode }[]>,
 ): Promise<Erd> {
   const folders = vscode.workspace.workspaceFolders;
@@ -23,7 +24,7 @@ export async function buildErd(
 
   const classes: ClassRef[] = [];
   const nameIndex = new Map<string, ClassRef[]>();
-  const pyFiles = await vscode.workspace.findFiles('**/*.py', '**/node_modules/**');
+  const pyFiles = sourceUri ? [sourceUri] : await vscode.workspace.findFiles('**/*.py', '**/node_modules/**');
 
   for (const uri of pyFiles) {
     try {
@@ -44,9 +45,11 @@ export async function buildErd(
     entityNames.add(cls.name);
 
     const fields = extractFields(cls.node, cls.source);
+    const kind = detectEntityKind(cls.node, cls.source);
     entities.push({
       name: cls.name,
       fields,
+      kind,
       range: withUri(
         { startLine: cls.node.startPosition.row, startCol: cls.node.startPosition.column, endLine: cls.node.endPosition.row, endCol: cls.node.endPosition.column },
         cls.uri.toString(),
@@ -105,6 +108,27 @@ function collectClasses(
     for (const child of node.namedChildren) visit(child);
   };
   visit(root);
+}
+
+function detectEntityKind(cls: Parser.SyntaxNode, _source: string): EntityKind {
+  // Check decorators by looking at parent decorated_definition
+  const parent = cls.parent;
+  if (parent?.type === 'decorated_definition') {
+    for (const child of parent.namedChildren) {
+      if (child.type === 'decorator') {
+        const inner = child.firstNamedChild;
+        if (inner?.text === 'dataclass') return 'dataclass';
+      }
+    }
+  }
+  // Check if extends Enum
+  const bases = cls.childForFieldName('superclasses');
+  if (bases) {
+    for (const base of bases.namedChildren) {
+      if (base.type === 'identifier' && base.text === 'Enum') return 'enum';
+    }
+  }
+  return 'class';
 }
 
 function extractFields(cls: Parser.SyntaxNode, source: string): string[] {
@@ -192,13 +216,29 @@ function extractTypeRef(field: string): string | null {
   return typeName;
 }
 
-export function erdToCfg(erd: Erd): Cfg {
+export function erdToCfg(erd: Erd, focusClass?: string): Cfg {
   const nodes: CfgNode[] = [];
   const edges: CfgEdge[] = [];
   let firstId = '';
   let lastId = '';
 
-  for (const ent of erd.entities) {
+  let entitySet: Set<string>;
+  if (focusClass) {
+    // Show only the focus class and entities directly connected to it
+    const connected = new Set<string>([focusClass]);
+    for (const rel of erd.relations) {
+      if (rel.from === focusClass) connected.add(rel.to);
+      if (rel.to === focusClass) connected.add(rel.from);
+    }
+    entitySet = connected;
+  } else {
+    entitySet = new Set(erd.entities.map(e => e.name));
+  }
+
+  const filteredEntities = erd.entities.filter(e => entitySet.has(e.name));
+  const filteredRelations = erd.relations.filter(r => entitySet.has(r.from) && entitySet.has(r.to));
+
+  for (const ent of filteredEntities) {
     const label = ent.fields.length > 0
       ? `${ent.name}\n${ent.fields.map(f => `  ${f}`).join('\n')}`
       : ent.name;
@@ -211,10 +251,11 @@ export function erdToCfg(erd: Erd): Cfg {
       label,
       range: ent.range,
       drillable: true,
+      entityKind: ent.kind,
     });
   }
 
-  for (const rel of erd.relations) {
+  for (const rel of filteredRelations) {
     const fromId = `ent_${rel.from}`;
     const toId = `ent_${rel.to}`;
     if (nodes.some(n => n.id === fromId) && nodes.some(n => n.id === toId)) {

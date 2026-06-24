@@ -1,6 +1,9 @@
+export type EntityKind = 'dataclass' | 'enum' | 'class';
+
 export interface ErdEntity {
   name: string;
   fields: string[];
+  kind: EntityKind;
   range?: SrcRange;
 }
 

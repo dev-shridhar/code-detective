@@ -45,6 +45,11 @@ export function activate(context: vscode.ExtensionContext) {
         const resolved = resolveCall(callNode, editor.document.uri, workspaceIndex, classIndex);
         if (resolved) {
           fnNode = resolved.entry.node;
+          // Constructor call — resolve to __init__ instead of whole class
+          if (fnNode.type === 'class_definition') {
+            const init = findInitMethod(fnNode);
+            if (init) fnNode = init;
+          }
           if (resolved.entry.uri.toString() !== editor.document.uri.toString()) {
             const doc = await vscode.workspace.openTextDocument(resolved.entry.uri);
             resolvedSource = doc.getText();
@@ -95,13 +100,19 @@ export function activate(context: vscode.ExtensionContext) {
         await workspaceIndex.build(parser, classIndex);
       }
 
-      const erd = await buildErd(parser);
+      const src = editor.document.getText();
+      const tree = parser.parse(src);
+      const offset = editor.document.offsetAt(editor.selection.active);
+      const cursorNode = tree.rootNode.descendantForIndex(offset);
+      const className = findEnclosingClassName(cursorNode);
+
+      const erd = await buildErd(parser, editor.document.uri);
       if (erd.entities.length === 0) {
         vscode.window.showInformationMessage('No entities found in the workspace.');
         return;
       }
 
-      const cfg = erdToCfg(erd);
+      let cfg = erdToCfg(erd, className);
       showCfg(editor, context, cfg);
     })
   );
@@ -296,6 +307,46 @@ function textDoc(source: string): TextDocLike {
     offsetAt: (pos) => offsetInText(source, pos.line, pos.character),
     positionAt: (off) => positionInText(source, off),
   };
+}
+
+function findEnclosingClassName(node: Parser.SyntaxNode | null): string | undefined {
+  let n = node;
+  while (n) {
+    if (n.type === 'identifier') {
+      // Check if this identifier is used as a class name in a class_definition
+      const parent = n.parent;
+      if (parent?.type === 'class_definition' && parent.childForFieldName('name') === n) {
+        return n.text;
+      }
+      // Check if it's a standalone reference (e.g., variable type or call target)
+      // Look up the class index to see if it matches a known class
+      return n.text;
+    }
+    if (n.type === 'call') {
+      const func = n.childForFieldName('function');
+      if (func?.type === 'identifier') return func.text;
+    }
+    n = n.parent;
+  }
+  return undefined;
+}
+
+function findInitMethod(cls: Parser.SyntaxNode): Parser.SyntaxNode | null {
+  const body = cls.childForFieldName('body');
+  if (!body) return null;
+  for (const stmt of body.namedChildren) {
+    if (stmt.type === 'function_definition' && stmt.childForFieldName('name')?.text === '__init__') {
+      return stmt;
+    }
+    // Handle decorated __init__ (@something above def __init__)
+    if (stmt.type === 'decorated_definition') {
+      const inner = stmt.namedChildren[stmt.namedChildren.length - 1];
+      if (inner?.type === 'function_definition' && inner.childForFieldName('name')?.text === '__init__') {
+        return inner;
+      }
+    }
+  }
+  return null;
 }
 
 export function deactivate() {}

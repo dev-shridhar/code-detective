@@ -229,6 +229,12 @@ async function render(cfg: Cfg) {
 
     const ns = 'http://www.w3.org/2000/svg';
 
+    const ENTITY_COLORS: Record<string, { fill: string; stroke: string }> = {
+      dataclass: { fill: '#00695c', stroke: '#26a69a' },
+      enum:      { fill: '#4a148c', stroke: '#ab47bc' },
+      class:     { fill: '#1a237e', stroke: '#5c6bc0' },
+    };
+
     for (const c of lc) {
       if (!c.x || !c.y) continue;
       const node = cMap.get(c.id);
@@ -238,7 +244,14 @@ async function render(cfg: Cfg) {
       const cx = c.x, cy = c.y;
 
       let roughEl: SVGElement;
-      const opts = { fill: st.fill, fillStyle: 'solid' as const, stroke: st.stroke, strokeWidth: 2, roughness: 1.6, bowing: 1.2 };
+      let fillColor = st.fill;
+      let strokeColor = st.stroke;
+      if (node.kind === 'entity' && node.entityKind) {
+        const ec = ENTITY_COLORS[node.entityKind] ?? ENTITY_COLORS.class;
+        fillColor = ec.fill;
+        strokeColor = ec.stroke;
+      }
+      const opts = { fill: fillColor, fillStyle: 'solid' as const, stroke: strokeColor, strokeWidth: 2, roughness: 1.6, bowing: 1.2 };
 
       if (st.shape === 'oval') {
         roughEl = rc.ellipse(cx + cw / 2, cy + ch / 2, cw * 0.85, ch * 0.8, opts) as SVGElement;
@@ -274,7 +287,11 @@ async function render(cfg: Cfg) {
         label.style.whiteSpace = 'pre';
         label.style.textAlign = 'left';
         label.style.fontSize = '11px';
-        label.textContent = node.label ?? '';
+        // Bold header for class name, normal for fields
+        const lines = (node.label ?? '').split('\n');
+        const header = lines[0];
+        const rest = lines.slice(1);
+        label.innerHTML = `<b>${header}</b>${rest.length > 0 ? '<br>' + rest.join('<br>') : ''}`;
       } else {
         label.textContent = node.label?.split('\n')[0] ?? '';
       }

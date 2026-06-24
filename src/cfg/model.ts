@@ -16,6 +16,8 @@ export interface SrcRange {
   endCol: number;
 }
 
+export type EntitySubKind = 'dataclass' | 'enum' | 'class';
+
 export interface CfgNode {
   id: string;
   kind: CfgNodeKind;
@@ -23,6 +25,7 @@ export interface CfgNode {
   range?: SrcRange;
   regionId?: string;
   drillable?: boolean;
+  entityKind?: EntitySubKind;
 }
 
 export type EdgeKind = 'normal' | 'true' | 'false' | 'loop-back' | 'exception' | 'case';
