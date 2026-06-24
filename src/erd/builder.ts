@@ -201,5 +201,5 @@ export function erdToCfg(erd: Erd): Cfg {
     }
   }
 
-  return { nodes, edges, regions: [], entryId: firstId, exitId: lastId };
+  return { nodes, edges, regions: [], entryId: firstId, exitId: lastId, layout: 'erd' };
 }

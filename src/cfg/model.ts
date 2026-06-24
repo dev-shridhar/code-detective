@@ -48,4 +48,5 @@ export interface Cfg {
   regions: CfgRegion[];
   entryId: string;
   exitId: string;
+  layout?: 'cfg' | 'erd';
 }

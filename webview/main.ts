@@ -44,7 +44,7 @@ function measure(n: CfgNode): { w: number; h: number } {
   const lines = n.label?.split('\n') ?? [''];
   const maxW = n.kind === 'entry' || n.kind === 'exit' ? 80 : 240;
   if (n.kind === 'entity') {
-    return { w: maxW, h: Math.max(40, lines.length * 18 + 8) };
+    return { w: 280, h: Math.max(50, lines.length * 20 + 16) };
   }
   return { w: maxW, h: n.kind === 'merge' ? 24 : 40 };
 }
@@ -129,9 +129,14 @@ async function render(cfg: Cfg) {
       return;
     }
 
+    const isErd = cfg.layout === 'erd';
     const elkGraph = {
       id: 'root',
-      layoutOptions: {
+      layoutOptions: isErd ? {
+        'elk.algorithm': 'stress',
+        'elk.stress.desiredEdgeLength': '200',
+        'elk.spacing.nodeNode': '80',
+      } : {
         'elk.algorithm': 'layered',
         'elk.direction': 'DOWN',
         'elk.layered.spacing.nodeNodeBetweenLayers': '48',

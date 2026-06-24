@@ -227,6 +227,7 @@ async function buildSignatureCard(editor: vscode.TextEditor, callName: string): 
     regions: [],
     entryId: 'entry',
     exitId: 'exit',
+    layout: 'cfg',
   };
 }
 

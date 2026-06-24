@@ -415,5 +415,5 @@ export function buildCfg(
   const body = fn.childForFieldName('body') ?? fn;
   const frontier = b.block(body, ['entry']);
   b.link(frontier, b.exitId);
-  return { nodes: b.nodes, edges: b.edges, regions: b.regions, entryId: 'entry', exitId: b.exitId };
+  return { nodes: b.nodes, edges: b.edges, regions: b.regions, entryId: 'entry', exitId: b.exitId, layout: 'cfg' };
 }
