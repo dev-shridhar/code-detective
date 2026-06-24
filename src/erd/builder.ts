@@ -1,6 +1,6 @@
 import * as vscode from 'vscode';
 import Parser from 'web-tree-sitter';
-import { Erd, ErdEntity, ErdRelation } from './model';
+import { Erd, ErdEntity, ErdRelation, EntityKind } from './model';
 import { Cfg, CfgNode, CfgEdge } from '../cfg/model';
 
 interface ClassRef {
@@ -159,7 +159,8 @@ function extractFields(cls: Parser.SyntaxNode, source: string): string[] {
       if (params) {
         for (const p of params.namedChildren) {
           if (p.type === 'typed_parameter' || p.type === 'default_parameter') {
-            const pName = p.child(0)?.type === 'identifier' ? p.child(0).text : undefined;
+            const first = p.child(0);
+            const pName = first && first.type === 'identifier' ? first.text : undefined;
             const pType = p.childForFieldName('type')?.text;
             if (pName && pType) paramMap.set(pName, pType);
           }

@@ -42,7 +42,7 @@ export class CodeFlowPanel {
   ): CodeFlowPanel {
     const panel = vscode.window.createWebviewPanel(
       CodeFlowPanel.viewType,
-      'Procedural CodeFlow',
+      'CodeDetective',
       vscode.ViewColumn.Beside,
       {
         enableScripts: true,

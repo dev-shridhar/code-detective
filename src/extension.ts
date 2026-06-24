@@ -45,11 +45,6 @@ export function activate(context: vscode.ExtensionContext) {
         const resolved = resolveCall(callNode, editor.document.uri, workspaceIndex, classIndex);
         if (resolved) {
           fnNode = resolved.entry.node;
-          // Constructor call — resolve to __init__ instead of whole class
-          if (fnNode.type === 'class_definition') {
-            const init = findInitMethod(fnNode);
-            if (init) fnNode = init;
-          }
           if (resolved.entry.uri.toString() !== editor.document.uri.toString()) {
             const doc = await vscode.workspace.openTextDocument(resolved.entry.uri);
             resolvedSource = doc.getText();
