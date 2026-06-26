@@ -37,7 +37,7 @@ export class WorkspaceIndex {
     this.ready = true;
   }
 
-  private indexFile(uri: vscode.Uri, source: string, root: Parser.SyntaxNode): void {
+  indexFile(uri: vscode.Uri, source: string, root: Parser.SyntaxNode): void {
     const visit = (node: Parser.SyntaxNode) => {
       if (node.type === 'function_definition' || node.type === 'class_definition') {
         const nameNode = node.childForFieldName('name');

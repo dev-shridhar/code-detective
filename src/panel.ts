@@ -10,18 +10,28 @@ function getNonce(): string {
   return text;
 }
 
+interface Crumb {
+  label: string;
+  cfg: Cfg;
+}
+
 export class CodeFlowPanel {
   static readonly viewType = 'codeflow.procedural';
   private extUri: vscode.Uri;
   private currentCfg: Cfg | undefined;
+  private crumbs: Crumb[] = [];
+  private onReveal: (range: SrcRange | undefined) => void;
+  private onDrillIn?: (range: SrcRange) => void;
 
   private constructor(
     private panel: vscode.WebviewPanel,
     extUri: vscode.Uri,
-    private onReveal: (range: SrcRange | undefined) => void,
-    private onDrillIn?: (range: SrcRange) => void,
+    onReveal: (range: SrcRange | undefined) => void,
+    onDrillIn?: (range: SrcRange) => void,
   ) {
     this.extUri = extUri;
+    this.onReveal = onReveal;
+    this.onDrillIn = onDrillIn;
     this.panel.onDidChangeViewState(() => this.update());
     this.panel.onDidDispose(() => this.dispose());
     this.panel.webview.onDidReceiveMessage((msg) => {
@@ -29,6 +39,8 @@ export class CodeFlowPanel {
         this.onReveal(msg.range);
       } else if (msg.type === 'drillIn') {
         this.onDrillIn?.(msg.range);
+      } else if (msg.type === 'navigateBack') {
+        this.navigateBack(msg.index);
       }
     });
   }
@@ -54,6 +66,8 @@ export class CodeFlowPanel {
     );
 
     const instance = new CodeFlowPanel(panel, context.extensionUri, onReveal, onDrillIn);
+    const label = uri.fsPath.split('/').pop() ?? uri.toString();
+    instance.crumbs = [{ label, cfg }];
     instance.render(cfg);
     return instance;
   }
@@ -62,8 +76,18 @@ export class CodeFlowPanel {
     this.panel.dispose();
   }
 
-  updateCfg(cfg: Cfg) {
+  updateCfg(cfg: Cfg, crumbLabel?: string) {
+    if (crumbLabel) {
+      this.crumbs.push({ label: crumbLabel, cfg });
+    }
     this.render(cfg);
+  }
+
+  private navigateBack(index: number) {
+    if (index < 0 || index >= this.crumbs.length) return;
+    const target = this.crumbs[index];
+    this.crumbs = this.crumbs.slice(0, index + 1);
+    this.render(target.cfg);
   }
 
   private render(cfg: Cfg) {
@@ -76,6 +100,8 @@ export class CodeFlowPanel {
       vscode.Uri.joinPath(this.extUri, 'dist', 'webview', 'main.js'),
     );
 
+    const breadcrumbs = this.crumbs.map(c => c.label);
+
     webview.html = `<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -83,12 +109,13 @@ export class CodeFlowPanel {
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src ${webview.cspSource} 'unsafe-inline'; script-src 'nonce-${nonce}';">
   <link rel="stylesheet" href="${webview.asWebviewUri(vscode.Uri.joinPath(this.extUri, 'dist', 'webview', 'style.css'))}">
-  <title>Procedural CodeFlow</title>
+  <title>CodeDetective</title>
 </head>
 <body>
   <div id="root"></div>
   <script nonce="${nonce}">
     const __CFG__ = ${JSON.stringify(cfg)};
+    const __BREADCRUMBS__ = ${JSON.stringify(breadcrumbs)};
   </script>
   <script nonce="${nonce}" src="${scriptUri}"></script>
 </body>

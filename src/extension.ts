@@ -122,18 +122,28 @@ function showCfg(editor: vscode.TextEditor, context: vscode.ExtensionContext, cf
     (range) => {
       if (!range) return;
       if (range.uri) {
-        const uri = vscode.Uri.parse(range.uri);
-        vscode.workspace.openTextDocument(uri).then(doc => {
-          vscode.window.showTextDocument(doc).then(e => {
-            const start = new vscode.Position(range.startLine, range.startCol);
-            const end = new vscode.Position(range.endLine, range.endCol);
-            e.selection = new vscode.Selection(start, end);
-            e.revealRange(new vscode.Range(start, end), vscode.TextEditorRevealType.InCenter);
+        try {
+          const uri = vscode.Uri.parse(range.uri);
+          vscode.workspace.openTextDocument(uri).then(doc => {
+            vscode.window.showTextDocument(doc).then(e => {
+              const start = new vscode.Position(range.startLine, range.startCol);
+              const end = new vscode.Position(range.endLine, range.endCol);
+              e.selection = new vscode.Selection(start, end);
+              e.revealRange(new vscode.Range(start, end), vscode.TextEditorRevealType.InCenter);
+            });
+          }, () => {
+            if (range) fallbackReveal(range);
           });
-        });
+        } catch {
+          if (range) fallbackReveal(range);
+        }
       } else {
-        const start = new vscode.Position(range.startLine, range.startCol);
-        const end = new vscode.Position(range.endLine, range.endCol);
+        fallbackReveal(range);
+      }
+      function fallbackReveal(r: SrcRange) {
+        if (!editor) return;
+        const start = new vscode.Position(r.startLine, r.startCol);
+        const end = new vscode.Position(r.endLine, r.endCol);
         editor.selection = new vscode.Selection(start, end);
         editor.revealRange(new vscode.Range(start, end), vscode.TextEditorRevealType.InCenter);
       }
@@ -148,30 +158,36 @@ async function handleDrillIn(
   range: SrcRange,
 ) {
   if (!currentPanel) return;
-  const uri = range.uri ? vscode.Uri.parse(range.uri) : editor.document.uri;
-  const srcBuf = await vscode.workspace.fs.readFile(uri);
-  const src = Buffer.from(srcBuf).toString('utf-8');
-  const parser = await ensureParser(context);
+  try {
+    const uri = range.uri ? vscode.Uri.parse(range.uri) : editor.document.uri;
+    const srcBuf = await vscode.workspace.fs.readFile(uri);
+    const src = Buffer.from(srcBuf).toString('utf-8');
+    const parser = await ensureParser(context);
 
-  if (!workspaceIndex.isReady()) {
-    await workspaceIndex.build(parser, classIndex);
-  }
-
-  const tree = parser.parse(src);
-  const offset = offsetInText(src, range.startLine, range.startCol);
-  let n: Parser.SyntaxNode | null = tree.rootNode.descendantForIndex(offset) as Parser.SyntaxNode | null;
-  while (n) {
-    if (n.type === 'function_definition' || n.type === 'class_definition' || n.type === 'async_function_definition') {
-      break;
+    if (!workspaceIndex.isReady()) {
+      await workspaceIndex.build(parser, classIndex);
     }
-    n = n.parent as Parser.SyntaxNode | null;
+
+    const tree = parser.parse(src);
+    const offset = offsetInText(src, range.startLine, range.startCol);
+    let n: Parser.SyntaxNode | null = tree.rootNode.descendantForIndex(offset) as Parser.SyntaxNode | null;
+    while (n) {
+      if (n.type === 'function_definition' || n.type === 'class_definition' || n.type === 'async_function_definition') {
+        break;
+      }
+      n = n.parent as Parser.SyntaxNode | null;
+    }
+    if (!n) {
+      vscode.window.showInformationMessage('No function or class at this location.');
+      return;
+    }
+    const nameNode = n.childForFieldName('name');
+    const crumbLabel = nameNode?.text ?? '<anonymous>';
+    const cfg = buildCfg(n, textDoc(src), workspaceIndex, uri.toString(), classIndex, false);
+    currentPanel.updateCfg(cfg, crumbLabel);
+  } catch (e) {
+    vscode.window.showInformationMessage(`Drill-in failed: ${e}`);
   }
-  if (!n) {
-    vscode.window.showInformationMessage('No function or class at this location.');
-    return;
-  }
-  const cfg = buildCfg(n, textDoc(src), workspaceIndex, uri.toString(), classIndex, false);
-  currentPanel.updateCfg(cfg);
 }
 
 async function resolveViaLSP(
@@ -305,21 +321,25 @@ function textDoc(source: string): TextDocLike {
 }
 
 function findEnclosingClassName(node: Parser.SyntaxNode | null): string | undefined {
+  // Check if the cursor node itself is a class name
+  if (node?.type === 'identifier') {
+    const parent = node.parent;
+    if (parent?.type === 'class_definition' && parent.childForFieldName('name') === node) {
+      return node.text;
+    }
+  }
+
+  // Walk up to find enclosing call or class definition
   let n = node;
   while (n) {
-    if (n.type === 'identifier') {
-      // Check if this identifier is used as a class name in a class_definition
-      const parent = n.parent;
-      if (parent?.type === 'class_definition' && parent.childForFieldName('name') === n) {
-        return n.text;
-      }
-      // Check if it's a standalone reference (e.g., variable type or call target)
-      // Look up the class index to see if it matches a known class
-      return n.text;
-    }
     if (n.type === 'call') {
       const func = n.childForFieldName('function');
       if (func?.type === 'identifier') return func.text;
+    }
+    if (n.type === 'class_definition') {
+      // Cursor is inside a class body — it might reference another class
+      if (node?.type === 'identifier') return node.text;
+      return undefined;
     }
     n = n.parent;
   }

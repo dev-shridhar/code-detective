@@ -119,7 +119,7 @@ class Builder {
   private defaultStmt(node: Parser.SyntaxNode, preds: string[]): string[] {
     this.typeEnv.trackAssignment(node);
 
-    if (this.index && this.callDepth < 1) {
+    if (this.index && this.callDepth < 2) {
       const callNode = findCallExpression(node);
       if (callNode) {
         const resolved = resolveCall(
@@ -140,6 +140,7 @@ class Builder {
       id: this.id(), kind: hasCall ? 'call' : 'statement',
       label: this.text(node),
       range: withUri(this.range(node), this.currentFileUri),
+      drillable: hasCall,
     });
     this.link(preds, id);
     return [id];
@@ -148,15 +149,24 @@ class Builder {
   private inlineCall(stmtNode: Parser.SyntaxNode, resolved: IndexEntry, preds: string[]): string[] {
     this.callDepth++;
 
+    const oldFileUri = this.currentFileUri;
+
     const callId = this.add({
       id: this.id(), kind: 'call',
       label: `call ${resolved.name}`,
-      range: withUri(this.range(stmtNode), resolved.uri.toString()),
+      range: withUri(this.range(stmtNode), oldFileUri),
     });
     this.link(preds, callId);
 
     const fn = resolved.node;
-    const body = fn.childForFieldName('body');
+    // For constructor calls (class_definition), use __init__ body instead of full class body
+    let body = fn.childForFieldName('body');
+    if (fn.type === 'class_definition') {
+      const initMethod = findInitMethod(fn);
+      if (initMethod) {
+        body = initMethod.childForFieldName('body');
+      }
+    }
     if (!body) { this.callDepth--; return [callId]; }
 
     const calleeExitId = `inline_exit_${this.seq++}`;
@@ -185,7 +195,6 @@ class Builder {
         return { line, character: col };
       },
     };
-    const oldFileUri = this.currentFileUri;
     this.currentFileUri = resolved.uri.toString();
 
     const calleeFrontier = this.block(body, [callId]);
@@ -353,12 +362,15 @@ class Builder {
   private text(n: Parser.SyntaxNode | null): string {
     if (!n) return '';
 
-    // Function definitions: compact form
+    // Function definitions: compact form, strip `self` from instance methods
     if (n.type === 'function_definition' || n.type === 'async_function_definition') {
       const prefix = n.type === 'async_function_definition' ? 'async def' : 'def';
       const name = n.childForFieldName('name')?.text ?? '';
       const params = n.childForFieldName('parameters')?.text ?? '()';
-      return `${prefix} ${name}${params}`;
+      const cleanParams = params.replace(/^\(self\s*,\s*/, '(').replace(/^\(self\)/, '()');
+      const retType = n.childForFieldName('return_type');
+      const ret = retType ? ` -> ${retType.text}` : '';
+      return `${prefix} ${name}${cleanParams}${ret}`;
     }
 
     const t = n.text;
@@ -400,6 +412,23 @@ function withUri(range: SrcRange, uri?: string): SrcRange {
 
 function uriFromString(s: string): vscode.Uri {
   return vscode.Uri.parse(s);
+}
+
+function findInitMethod(cls: Parser.SyntaxNode): Parser.SyntaxNode | null {
+  const body = cls.childForFieldName('body');
+  if (!body) return null;
+  for (const stmt of body.namedChildren) {
+    if (stmt.type === 'function_definition' && stmt.childForFieldName('name')?.text === '__init__') {
+      return stmt;
+    }
+    if (stmt.type === 'decorated_definition') {
+      const inner = stmt.namedChildren[stmt.namedChildren.length - 1];
+      if (inner?.type === 'function_definition' && inner.childForFieldName('name')?.text === '__init__') {
+        return inner;
+      }
+    }
+  }
+  return null;
 }
 
 export function buildCfg(

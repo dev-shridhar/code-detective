@@ -3,6 +3,7 @@ import rough from 'roughjs';
 import { Cfg, CfgNode, CfgEdge } from '../src/cfg/model';
 
 declare const __CFG__: Cfg;
+declare const __BREADCRUMBS__: string[] | undefined;
 const vscode = acquireVsCodeApi();
 
 window.onerror = function(msg, url, line, col, err) {
@@ -80,8 +81,16 @@ let currentCfg: Cfg | null = null;
 async function render(cfg: Cfg) {
   const elk = new ELK();
   const root = document.getElementById('root')!;
-  root.innerHTML = `
+    const crumbs = (typeof __BREADCRUMBS__ !== 'undefined' ? __BREADCRUMBS__ : []);
+    const crumbHtml = crumbs.length > 0
+      ? crumbs.map((l, i) =>
+          `<span class="crumb${i < crumbs.length - 1 ? ' crumb-link' : ''}" data-index="${i}">${l}</span>${i < crumbs.length - 1 ? '<span class="crumb-sep">›</span>' : ''}`
+        ).join('')
+      : '';
+
+    root.innerHTML = `
     <div class="canvas" id="canvas">
+      <div class="breadcrumbs" id="breadcrumbs">${crumbHtml}</div>
       <div class="toolbar" id="toolbar">
         <button class="tb-btn" id="paths-btn" title="Toggle Paths View">🔀</button>
         <span class="tb-sep"></span>
@@ -343,6 +352,15 @@ async function render(cfg: Cfg) {
     panX = Math.max(40, (vw - gW * zoom) / 2);
     panY = Math.max(40, (vh - gH * zoom) / 2);
     applyTransform();
+
+    const bcEl = document.getElementById('breadcrumbs')!;
+    bcEl.querySelectorAll('.crumb-link').forEach(el => {
+      el.addEventListener('click', () => {
+        const idx = parseInt((el as HTMLElement).dataset.index ?? '0');
+        vscode.postMessage({ type: 'navigateBack', index: idx });
+      });
+    });
+
     setupInteraction(canvas);
     setupPathsMode(canvas);
     setupExport();
@@ -606,4 +624,14 @@ function reroute(cfg: Cfg, edges: CfgEdge[]) {
 
 document.addEventListener('DOMContentLoaded', () => {
   if (typeof __CFG__ !== 'undefined') render(__CFG__);
+});
+
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape') {
+    const crumbs = typeof __BREADCRUMBS__ !== 'undefined' ? __BREADCRUMBS__ : [];
+    if (crumbs.length > 1) {
+      e.preventDefault();
+      vscode.postMessage({ type: 'navigateBack', index: crumbs.length - 2 });
+    }
+  }
 });

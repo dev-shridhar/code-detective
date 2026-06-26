@@ -19,15 +19,22 @@ export async function buildErd(
   sourceUri?: vscode.Uri,
   index?: Map<string, { uri: vscode.Uri; source: string; node: Parser.SyntaxNode }[]>,
 ): Promise<Erd> {
-  const folders = vscode.workspace.workspaceFolders;
-  if (!folders) return { entities: [], relations: [] };
-
   const classes: ClassRef[] = [];
   const nameIndex = new Map<string, ClassRef[]>();
-  const pyFiles = sourceUri ? [sourceUri] : await vscode.workspace.findFiles('**/*.py', '**/node_modules/**');
 
-  for (const uri of pyFiles) {
+  // Collect .py files to scan
+  const pyFiles = new Set<string>();
+  if (sourceUri) pyFiles.add(sourceUri.fsPath);
+
+  const folders = vscode.workspace.workspaceFolders;
+  if (folders) {
+    const workspacePyFiles = await vscode.workspace.findFiles('**/*.py', '**/node_modules/**');
+    for (const u of workspacePyFiles) pyFiles.add(u.fsPath);
+  }
+
+  for (const fsPath of pyFiles) {
     try {
+      const uri = vscode.Uri.file(fsPath);
       const doc = await vscode.workspace.openTextDocument(uri);
       const src = doc.getText();
       const tree = parser.parse(src);
