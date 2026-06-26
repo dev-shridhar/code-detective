@@ -171,6 +171,26 @@ async function handleDrillIn(
     const tree = parser.parse(src);
     const offset = offsetInText(src, range.startLine, range.startCol);
     let n: Parser.SyntaxNode | null = tree.rootNode.descendantForIndex(offset) as Parser.SyntaxNode | null;
+
+    // If clicked on a call, resolve it to find the callee
+    if (n?.type === 'call') {
+      const resolved = resolveCall(n, uri, workspaceIndex, classIndex);
+      if (resolved) {
+        const resolvedUri = resolved.entry.uri;
+        const resolvedSrc = resolvedUri.toString() !== uri.toString()
+          ? Buffer.from(await vscode.workspace.fs.readFile(resolvedUri)).toString('utf-8')
+          : src;
+        const resolvedTree = resolvedSrc === src ? tree : parser.parse(resolvedSrc);
+        const resolvedNode = resolved.entry.node;
+        const nameNode = resolvedNode.childForFieldName('name');
+        const crumbLabel = nameNode?.text ?? '<anonymous>';
+        const cfg = buildCfg(resolvedNode, textDoc(resolvedSrc), workspaceIndex, resolvedUri.toString(), classIndex, false);
+        currentPanel.updateCfg(cfg, crumbLabel);
+        return;
+      }
+    }
+
+    // Fallback: walk up to enclosing function/class definition
     while (n) {
       if (n.type === 'function_definition' || n.type === 'class_definition' || n.type === 'async_function_definition') {
         break;
