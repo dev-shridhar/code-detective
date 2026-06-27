@@ -1,12 +1,20 @@
 # CodeDetective
 
+[![Version](https://img.shields.io/visual-studio-marketplace/v/dev-shridhar.codedetective?color=42a5f5&label=VS%20Code&style=flat-square)](https://marketplace.visualstudio.com/items?itemName=dev-shridhar.codedetective)
+[![Installs](https://img.shields.io/visual-studio-marketplace/i/dev-shridhar.codedetective?color=4caf50&label=installs&style=flat-square)](https://marketplace.visualstudio.com/items?itemName=dev-shridhar.codedetective)
+[![License](https://img.shields.io/badge/license-MIT-42a5f5?style=flat-square)](LICENSE)
+
 Instant flowcharts from your Python code. Right-click any function — CodeDetective parses it with tree-sitter, resolves calls across files via type inference, and renders an interactive control-flow diagram right inside VS Code.
 
-## Screenshots
+---
 
 ![](media/screenshot-main.png)
 
-![](media/screenshot-function.png)
+<p align="center">
+  <img src="media/screenshot-function.png" alt="Function CFG"/>
+</p>
+
+---
 
 ## Features
 
@@ -48,6 +56,10 @@ Instant flowcharts from your Python code. Right-click any function — CodeDetec
 - Layout direction toggle
 - More export formats (PNG, PDF)
 - TypeScript/JavaScript support
+
+---
+
+[Changelog](CHANGELOG.md)
 
 ## License
 
