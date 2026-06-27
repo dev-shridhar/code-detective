@@ -1,6 +1,7 @@
 import ELK from 'elkjs/lib/elk.bundled.js';
 import rough from 'roughjs';
 import { Cfg, CfgNode, CfgEdge } from '../src/cfg/model';
+import { measure, buildEdgeD, midPoint, ElkNode, ElkEdge } from './utils';
 
 declare const __CFG__: Cfg;
 declare const __BREADCRUMBS__: string[] | undefined;
@@ -37,36 +38,6 @@ const EDGE_STYLES: Record<string, { color: string; dash: string }> = {
 const LABEL: Record<string, string> = {
   true: 'Yes', false: 'No', 'loop-back': 'Loop', exception: 'Error', case: 'Case',
 };
-
-interface ElkNode { id: string; width: number; height: number; x?: number; y?: number }
-interface ElkEdge { id: string; sources: string[]; targets: string[]; sections?: Array<{ startPoint: {x:number,y:number}; endPoint: {x:number,y:number}; bendPoints?: Array<{x:number,y:number}> }> }
-
-function measure(n: CfgNode): { w: number; h: number } {
-  const lines = n.label?.split('\n') ?? [''];
-  const maxW = n.kind === 'entry' || n.kind === 'exit' ? 80 : 240;
-  if (n.kind === 'entity') {
-    return { w: 280, h: Math.max(50, lines.length * 20 + 16) };
-  }
-  return { w: maxW, h: n.kind === 'merge' ? 24 : 40 };
-}
-
-function buildEdgeD(sec: ElkEdge['sections'][0]): string {
-  let d = `M ${sec.startPoint.x} ${sec.startPoint.y}`;
-  if (sec.bendPoints?.length) {
-    for (const bp of sec.bendPoints) d += ` L ${bp.x} ${bp.y}`;
-  }
-  d += ` L ${sec.endPoint.x} ${sec.endPoint.y}`;
-  return d;
-}
-
-function midPoint(sec: ElkEdge['sections'][0]): { x: number; y: number } {
-  if (sec.bendPoints?.length) {
-    const bp = sec.bendPoints;
-    const last = bp[bp.length - 1];
-    return { x: (last.x + sec.endPoint.x) / 2, y: (last.y + sec.endPoint.y) / 2 };
-  }
-  return { x: (sec.startPoint.x + sec.endPoint.x) / 2, y: (sec.startPoint.y + sec.endPoint.y) / 2 };
-}
 
 const collapsedRegions = new Set<string>();
 let zoom = 1, panX = 0, panY = 0;
@@ -372,9 +343,11 @@ async function render(cfg: Cfg) {
 function showTooltip(e: MouseEvent, node: CfgNode) {
   if (!tooltipEl) return;
   const s = SHAPES[node.kind] ?? SHAPES.statement;
+  tooltipEl.setAttribute('data-kind', node.kind);
+  tooltipEl.style.borderLeftColor = s.stroke;
+  const detail = node.detail ?? node.label ?? '';
   tooltipEl.innerHTML = `
-    <div class="tt-header" style="color:${s.stroke}">${node.kind.toUpperCase()}</div>
-    <div class="tt-body">${node.label ?? ''}</div>
+    <div class="tt-detail">${detail}</div>
     ${node.range ? `<div class="tt-src">Line ${node.range.startLine + 1}</div>` : ''}
   `;
   tooltipEl.style.display = 'block';
@@ -384,6 +357,7 @@ function showTooltip(e: MouseEvent, node: CfgNode) {
 function moveTooltip(e: MouseEvent) {
   if (!tooltipEl) return;
   const pad = 12;
+  // Position below and to the right of cursor
   let x = e.clientX + pad, y = e.clientY + pad;
   const r = tooltipEl.getBoundingClientRect();
   if (x + r.width > window.innerWidth - pad) x = e.clientX - r.width - pad;

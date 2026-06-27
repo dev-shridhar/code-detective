@@ -7,7 +7,6 @@ import { WorkspaceIndex } from './indexer';
 import { ClassIndex } from './class-indexer';
 import { resolveCall } from './resolver';
 import { Cfg, SrcRange } from './cfg/model';
-import { buildErd, erdToCfg } from './erd/builder';
 import { TypeEnv } from './type-env';
 
 let currentPanel: CodeFlowPanel | undefined;
@@ -109,36 +108,7 @@ export function activate(context: vscode.ExtensionContext) {
     })
   );
 
-  context.subscriptions.push(
-    vscode.commands.registerCommand('codedetective.showErd', async () => {
-      const editor = vscode.window.activeTextEditor;
-      if (!editor || editor.document.languageId !== 'python') {
-        vscode.window.showInformationMessage('Open a Python file.');
-        return;
-      }
-
-      const parser = await ensureParser(context);
-
-      if (!workspaceIndex.isReady()) {
-        await workspaceIndex.build(parser, classIndex);
-      }
-
-      const src = editor.document.getText();
-      const tree = parser.parse(src);
-      const offset = editor.document.offsetAt(editor.selection.active);
-      const cursorNode = tree.rootNode.descendantForIndex(offset);
-      const className = findEnclosingClassName(cursorNode);
-
-      const erd = await buildErd(parser, editor.document.uri);
-      if (erd.entities.length === 0) {
-        vscode.window.showInformationMessage('No entities found in the workspace.');
-        return;
-      }
-
-      let cfg = erdToCfg(erd, className);
-      showCfg(editor, context, cfg);
-    })
-  );
+  // ERD command held back — will be added in a future release
 }
 
 function showCfg(editor: vscode.TextEditor, context: vscode.ExtensionContext, cfg: Cfg) {
@@ -173,28 +143,6 @@ async function handleDrillIn(
     const descendant = tree.rootNode.descendantForIndex(offset) as Parser.SyntaxNode | null;
 
     const layout = currentPanel.getLayout();
-
-    // ERD drill-in: refocus on the clicked entity
-    if (layout === 'erd') {
-      let cls: Parser.SyntaxNode | null = descendant;
-      while (cls) {
-        if (cls.type === 'class_definition') break;
-        cls = cls.parent as Parser.SyntaxNode | null;
-      }
-      if (cls) {
-        const nameNode = cls.childForFieldName('name');
-        const className = nameNode?.text;
-        if (className) {
-          const erd = await buildErd(parser, editor.document.uri);
-          const cfg = erdToCfg(erd, className);
-          currentPanel.updateCfg(cfg, className);
-          return;
-        }
-      }
-      // Fallback: reveal source
-      revealRange(editor, range);
-      return;
-    }
 
     // CFG drill-in logic:
 
@@ -440,48 +388,6 @@ function textDoc(source: string): TextDocLike {
   };
 }
 
-function findEnclosingClassName(node: Parser.SyntaxNode | null): string | undefined {
-  // Check if the cursor node itself is a class name
-  if (node?.type === 'identifier') {
-    const parent = node.parent;
-    if (parent?.type === 'class_definition' && parent.childForFieldName('name') === node) {
-      return node.text;
-    }
-  }
 
-  // Walk up to find enclosing call or class definition
-  let n = node;
-  while (n) {
-    if (n.type === 'call') {
-      const func = n.childForFieldName('function');
-      if (func?.type === 'identifier') return func.text;
-    }
-    if (n.type === 'class_definition') {
-      // Cursor is inside a class body — it might reference another class
-      if (node?.type === 'identifier') return node.text;
-      return undefined;
-    }
-    n = n.parent;
-  }
-  return undefined;
-}
-
-function findInitMethod(cls: Parser.SyntaxNode): Parser.SyntaxNode | null {
-  const body = cls.childForFieldName('body');
-  if (!body) return null;
-  for (const stmt of body.namedChildren) {
-    if (stmt.type === 'function_definition' && stmt.childForFieldName('name')?.text === '__init__') {
-      return stmt;
-    }
-    // Handle decorated __init__ (@something above def __init__)
-    if (stmt.type === 'decorated_definition') {
-      const inner = stmt.namedChildren[stmt.namedChildren.length - 1];
-      if (inner?.type === 'function_definition' && inner.childForFieldName('name')?.text === '__init__') {
-        return inner;
-      }
-    }
-  }
-  return null;
-}
 
 export function deactivate() {}

@@ -22,6 +22,7 @@ export interface CfgNode {
   id: string;
   kind: CfgNodeKind;
   label: string;
+  detail?: string;
   range?: SrcRange;
   regionId?: string;
   drillable?: boolean;

@@ -98,6 +98,8 @@ export class CodeFlowPanel {
     this.currentCfg = cfg;
     const panel = this.panel;
     const webview = panel.webview;
+    const lastCrumb = this.crumbs.length > 0 ? this.crumbs[this.crumbs.length - 1] : null;
+    panel.title = lastCrumb ? `CodeDetective: ${lastCrumb.label}` : 'CodeDetective';
     const nonce = getNonce();
 
     const scriptUri = webview.asWebviewUri(

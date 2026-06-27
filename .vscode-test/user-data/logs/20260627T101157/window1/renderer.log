@@ -1,0 +1,10 @@
+2026-06-27 10:11:58.938 [info] Started local extension host with pid 46296.
+2026-06-27 10:11:59.020 [info] [AccountPolicyGate] apply: state=inactive, reason=undefined, isRestricted=false
+2026-06-27 10:11:59.217 [info] Loading development extension at /Users/shridharkulkakrni/code-detective
+2026-06-27 10:11:59.301 [info] Settings Sync: Account status changed from uninitialized to unavailable
+2026-06-27 10:11:59.625 [info] === Opening model.py ===
+2026-06-27 10:12:01.704 [info] === Triggering codedetective.showCodeFlow ===
+2026-06-27 10:12:04.073 [info] [AccountPolicyGate] apply: state=inactive, reason=undefined, isRestricted=false
+2026-06-27 10:12:10.026 [info] === Screenshot saved ===
+2026-06-27 10:12:10.027 [info] Open tabs: {"uri":{"$mid":1,"fsPath":"/Users/shridharkulkakrni/ddd_demo/domain/model.py","external":"file:///Users/shridharkulkakrni/ddd_demo/domain/model.py","path":"/Users/shridharkulkakrni/ddd_demo/domain/model.py","scheme":"file"}}, {"viewType":"mainThreadWebview-codeflow.procedural"}
+2026-06-27 10:12:10.027 [info] === Smoke test completed successfully ===

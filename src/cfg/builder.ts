@@ -18,13 +18,15 @@ class Builder {
   edges: CfgEdge[] = [];
   regions: CfgRegion[] = [];
   private seq = 0;
+  private regionSeq = 0;
   private loops: LoopCtx[] = [];
   private exitStack: string[] = [];
   readonly exitId = 'exit';
   private callDepth = 0;
   private currentFileUri?: string;
-  private typeEnv = new TypeEnv();
+  typeEnv = new TypeEnv();
   moduleMode = false;
+  private regionStack: { id: string; startCount: number }[] = [];
 
   constructor(
     private doc: TextDocLike,
@@ -43,8 +45,23 @@ class Builder {
   }
 
   private add(n: CfgNode): string {
+    if (this.regionStack.length > 0) {
+      n.regionId = this.regionStack[this.regionStack.length - 1].id;
+    }
     this.nodes.push(n);
     return n.id;
+  }
+
+  private beginRegion(kind: CfgRegion['kind'], headerId: string, exitIds: string[]): void {
+    const id = `region_${this.regionSeq++}`;
+    this.regions.push({ id, kind, headerId, memberIds: [], exitIds });
+    this.regionStack.push({ id, startCount: this.nodes.length });
+  }
+
+  private endRegion(): void {
+    const entry = this.regionStack.pop()!;
+    const r = this.regions.find(r => r.id === entry.id)!;
+    r.memberIds = this.nodes.slice(entry.startCount).map(n => n.id);
   }
 
   link(from: string[], to: string, kind: CfgEdge['kind'] = 'normal', label?: string): void {
@@ -79,7 +96,6 @@ class Builder {
         return this.addDrillable(node, preds);
       case N.IMPORT:
       case N.IMPORT_FROM:
-        if (this.moduleMode) return this.defaultStmt(node, preds);
         return preds;
       case N.ASYNC_FUNC:
         if (this.moduleMode) return this.addDrillable(node, preds);
@@ -88,9 +104,12 @@ class Builder {
       case N.ASYNC_WITH:  return this.block(node.childForFieldName('body')!, preds);
       case N.CLASS_DEF: {
         if (this.moduleMode) return this.addDrillable(node, preds);
+        this.typeEnv.push();
         const clsName = node.childForFieldName('name')?.text;
         if (clsName) this.typeEnv.set('self', clsName);
-        return this.block(node.childForFieldName('body')!, preds);
+        const r = this.block(node.childForFieldName('body')!, preds);
+        this.typeEnv.pop();
+        return r;
       }
       case N.DECORATED_DEF: {
         const inner = node.namedChildren[node.namedChildren.length - 1];
@@ -105,6 +124,7 @@ class Builder {
     const id = this.add({
       id: this.id(), kind: 'statement',
       label: this.text(node),
+      detail: node.text,
       range: withUri(this.range(node), this.currentFileUri),
       drillable: true,
     });
@@ -132,9 +152,15 @@ class Builder {
     }
 
     const hasCall = findCallExpression(node) !== null;
+    let label = this.text(node);
+    if (hasCall) {
+      const callNode = findCallExpression(node);
+      if (callNode) label = this.text(callNode);
+    }
     const id = this.add({
       id: this.id(), kind: hasCall ? 'call' : 'statement',
-      label: this.text(node),
+      label,
+      detail: node.text,
       range: withUri(this.range(node), this.currentFileUri),
       drillable: hasCall,
     });
@@ -144,17 +170,35 @@ class Builder {
 
   private inlineCall(stmtNode: Parser.SyntaxNode, resolved: IndexEntry, preds: string[]): string[] {
     this.callDepth++;
+    this.typeEnv.push();
 
     const oldFileUri = this.currentFileUri;
 
     const callId = this.add({
       id: this.id(), kind: 'call',
       label: `call ${resolved.name}`,
+      detail: stmtNode.text,
       range: withUri(this.range(stmtNode), oldFileUri),
     });
     this.link(preds, callId);
 
     const fn = resolved.node;
+    // Set self → class name for label replacement inside method bodies
+    if (fn.type === 'class_definition') {
+      const cn = fn.childForFieldName('name')?.text;
+      if (cn) this.typeEnv.set('self', cn);
+    } else {
+      let p = fn.parent;
+      while (p) {
+        if (p.type === 'class_definition') {
+          const cn = p.childForFieldName('name')?.text;
+          if (cn) this.typeEnv.set('self', cn);
+          break;
+        }
+        p = p.parent;
+      }
+    }
+
     // For constructor calls (class_definition), use __init__ body instead of full class body
     let body = fn.childForFieldName('body');
     if (fn.type === 'class_definition') {
@@ -163,7 +207,7 @@ class Builder {
         body = initMethod.childForFieldName('body');
       }
     }
-    if (!body) { this.callDepth--; return [callId]; }
+    if (!body) { this.typeEnv.pop(); this.callDepth--; return [callId]; }
 
     const calleeExitId = `inline_exit_${this.seq++}`;
     this.add({ id: calleeExitId, kind: 'merge', label: '' });
@@ -198,6 +242,7 @@ class Builder {
     this.doc = oldDoc;
     this.currentFileUri = oldFileUri;
     this.exitStack.pop();
+    this.typeEnv.pop();
 
     this.link(calleeFrontier, calleeExitId);
 
@@ -209,13 +254,18 @@ class Builder {
     const condId = this.add({
       id: this.id(), kind: 'branch',
       label: this.text(node.childForFieldName('condition')!),
+      detail: node.text,
       range: withUri(this.range(node), this.currentFileUri),
     });
     this.link(preds, condId);
 
+    this.beginRegion('if', condId, []);
+
     const consequence = node.childForFieldName('consequence')!;
     const trueFrontier = this.block(consequence, [condId]);
-    this.edges.filter(e => e.from === condId && trueFrontier.includes(e.to)).forEach(e => (e.kind = 'true'));
+    for (const e of this.edges) {
+      if (e.from === condId && e.kind === 'normal') e.kind = 'true';
+    }
 
     let falsePreds: string[] = [condId];
     let elseFrontier: string[] = [];
@@ -226,12 +276,15 @@ class Builder {
         const cId = this.add({
           id: this.id(), kind: 'branch',
           label: this.text(alt.childForFieldName('condition')!),
+          detail: alt.text,
           range: withUri(this.range(alt), this.currentFileUri),
         });
         this.link(falsePreds, cId, 'false');
-        const armFrontier = this.block(alt.childForFieldName('consequence')!, [cId]);
-        this.edges.filter(e => e.from === cId && armFrontier.includes(e.to)).forEach(e => (e.kind = 'true'));
-        elseFrontier.push(...armFrontier);
+        const elifFrontier = this.block(alt.childForFieldName('consequence')!, [cId]);
+        for (const e of this.edges) {
+          if (e.from === cId && e.kind === 'normal') e.kind = 'true';
+        }
+        elseFrontier.push(...elifFrontier);
         falsePreds = [cId];
       } else if (alt.type === N.ELSE) {
         sawElse = true;
@@ -239,17 +292,22 @@ class Builder {
       }
     }
 
-    if (!sawElse) this.link(falsePreds, condId, 'false');
     const falseExit = sawElse ? elseFrontier : [...falsePreds, ...elseFrontier];
-    return [...trueFrontier, ...falseExit];
+    const result = [...trueFrontier, ...falseExit];
+    this.regions[this.regions.length - 1].exitIds = result;
+    this.endRegion();
+    return result;
   }
 
   private forStmt(node: Parser.SyntaxNode, preds: string[]): string[] {
     const left = node.childForFieldName('left');
     const right = node.childForFieldName('right');
+    const isAsync = node.text.startsWith('async');
+    const prefix = isAsync ? 'async for' : 'for';
     const headerId = this.add({
       id: this.id(), kind: 'loop',
-      label: `for ${this.text(left)} in ${this.text(right)}`,
+      label: `${prefix} ${this.text(left)} in ${this.text(right)}`,
+      detail: node.text,
       range: withUri(this.range(node), this.currentFileUri),
     });
     this.link(preds, headerId);
@@ -257,9 +315,13 @@ class Builder {
     const afterId = this.add({ id: this.id(), kind: 'merge', label: '' });
     this.loops.push({ continueTo: headerId, breakTo: afterId });
 
+    this.beginRegion('for', headerId, [afterId]);
+
     const body = node.childForFieldName('body')!;
     const bodyFrontier = this.block(body, [headerId]);
-    this.edges.filter(e => e.from === headerId && bodyFrontier.includes(e.to)).forEach(e => (e.kind = 'true'));
+    for (const e of this.edges) {
+      if (e.from === headerId && e.kind === 'normal') e.kind = 'true';
+    }
     this.link(bodyFrontier, headerId, 'loop-back');
     this.loops.pop();
 
@@ -271,6 +333,7 @@ class Builder {
     } else {
       this.link([headerId], afterId, 'false');
     }
+    this.endRegion();
     return [afterId];
   }
 
@@ -279,14 +342,20 @@ class Builder {
     const headerId = this.add({
       id: this.id(), kind: 'loop',
       label: `while ${this.text(condition)}`,
+      detail: node.text,
       range: withUri(this.range(node), this.currentFileUri),
     });
     this.link(preds, headerId);
     const afterId = this.add({ id: this.id(), kind: 'merge', label: '' });
     this.loops.push({ continueTo: headerId, breakTo: afterId });
+
+    this.beginRegion('while', headerId, [afterId]);
+
     const body = node.childForFieldName('body')!;
     const bodyFrontier = this.block(body, [headerId]);
-    this.edges.filter(e => e.from === headerId && bodyFrontier.includes(e.to)).forEach(e => (e.kind = 'true'));
+    for (const e of this.edges) {
+      if (e.from === headerId && e.kind === 'normal') e.kind = 'true';
+    }
     this.link(bodyFrontier, headerId, 'loop-back');
     this.loops.pop();
     const elseClause = node.childForFieldName('alternative');
@@ -297,6 +366,7 @@ class Builder {
     } else {
       this.link([headerId], afterId, 'false');
     }
+    this.endRegion();
     return [afterId];
   }
 
@@ -304,6 +374,7 @@ class Builder {
     const id = this.add({
       id: this.id(), kind,
       label: this.text(node),
+      detail: node.text,
       range: withUri(this.range(node), this.currentFileUri),
     });
     this.link(preds, id);
@@ -313,25 +384,45 @@ class Builder {
 
   private tryStmt(node: Parser.SyntaxNode, preds: string[]): string[] {
     const body = node.childForFieldName('body')!;
+    const finallyClause = node.namedChildren.find(n => n.type === 'finally_clause');
+
+    let finallyEntryId: string | undefined;
+    if (finallyClause) {
+      finallyEntryId = this.id();
+      this.add({ id: finallyEntryId, kind: 'merge', label: '' });
+      this.exitStack.push(finallyEntryId);
+    }
+
+    const bodyNodeCount = this.nodes.length;
     const bodyFrontier = this.block(body, preds);
     const handlerFrontiers: string[] = [];
-    for (const ex of node.childrenForFieldName('handler')) {
-      const excType = ex.firstNamedChild;
+    const bodyNodeIds = this.nodes.slice(bodyNodeCount).map(n => n.id);
+    for (const ex of node.namedChildren.filter(n => n.type === N.EXCEPT_HANDLER)) {
+      const excType = ex.namedChildren.find((c: Parser.SyntaxNode) => c.type !== 'block');
       const excLabel = excType ? this.text(excType) : '';
       const hId = this.add({
         id: this.id(), kind: 'statement',
         label: excLabel || 'except',
+        detail: ex.text,
         range: withUri(this.range(ex), this.currentFileUri),
       });
-      const source = bodyFrontier[0] ?? preds[0];
-      this.link([source], hId, 'exception', excLabel || 'exception');
-      const handlerBody = ex.childForFieldName('consequence') ?? ex;
+      const sources = bodyFrontier.length > 0 ? bodyFrontier : bodyNodeIds;
+      this.link(sources, hId, 'exception', excLabel || 'exception');
+      const handlerBody = ex.namedChildren.find((c: Parser.SyntaxNode) => c.type === 'block') ?? ex;
       handlerFrontiers.push(...this.block(handlerBody, [hId]));
     }
-    const finallyBody = node.childForFieldName('finally_body');
-    if (finallyBody) {
-      const finalPreds = bodyFrontier.length ? bodyFrontier : preds;
+
+    if (finallyClause && finallyEntryId) {
+      this.exitStack.pop();
+      const finallyBody = finallyClause.childForFieldName('body') ?? finallyClause;
+      const finalPreds = bodyFrontier.length ? bodyFrontier : [];
       const allPreds = [...finalPreds, ...handlerFrontiers];
+      const hasAbnormal = this.edges.some(e => e.to === finallyEntryId);
+      if (hasAbnormal) {
+        allPreds.push(finallyEntryId);
+      } else {
+        this.nodes = this.nodes.filter(n => n.id !== finallyEntryId);
+      }
       return this.block(finallyBody, allPreds);
     }
     return [...bodyFrontier, ...handlerFrontiers];
@@ -342,16 +433,28 @@ class Builder {
     const subjId = this.add({
       id: this.id(), kind: 'branch',
       label: `match ${this.text(subject)}`,
+      detail: node.text,
       range: withUri(this.range(node), this.currentFileUri),
     });
     this.link(preds, subjId);
+    this.beginRegion('match', subjId, []);
     const out: string[] = [];
-    for (const c of node.namedChildren.filter(n => n.type === N.CASE)) {
-      const caseFrontier = this.block(c, [subjId]);
-      const caseId = c.firstNamedChild?.id;
-      if (caseId != null) this.edges.filter(e => e.from === subjId && e.to === String(caseId)).forEach(e => (e.kind = 'case'));
-      out.push(...caseFrontier);
+    const bodyBlock = node.namedChildren.find(n => n.type === 'block');
+    if (bodyBlock) {
+      for (const c of bodyBlock.namedChildren.filter(n => n.type === N.CASE)) {
+        const caseBody = c.namedChildren.find((n: Parser.SyntaxNode) => n.type === 'block');
+        const beforeCount = this.edges.length;
+        const caseFrontier = caseBody ? this.block(caseBody, [subjId]) : this.block(c, [subjId]);
+        for (let i = beforeCount; i < this.edges.length; i++) {
+          if (this.edges[i].from === subjId && this.edges[i].kind === 'normal') {
+            this.edges[i].kind = 'case';
+          }
+        }
+        out.push(...caseFrontier);
+      }
     }
+    this.regions[this.regions.length - 1].exitIds = out;
+    this.endRegion();
     return out;
   }
 
@@ -375,11 +478,20 @@ class Builder {
     // Multi-line statement — first line ends with opening bracket or comma
     if (t.includes('\n')) {
       const stripped = firstLine.replace(/[({\[,]\s*$/, '').trimEnd();
-      return stripped ? stripped + '(...)' : firstLine;
+      let label = stripped ? stripped + '(...)' : firstLine;
+      const clsName = this.typeEnv.get('self');
+      if (clsName) label = label.replace(/\bself\./g, clsName + '.');
+      return label;
     }
 
     // Single line — truncate if too long
-    return firstLine.length > 100 ? firstLine.slice(0, 97) + '...' : firstLine;
+    let label = firstLine.length > 100 ? firstLine.slice(0, 97) + '...' : firstLine;
+
+    // Replace self. with the class name when inside a class method
+    const clsName = this.typeEnv.get('self');
+    if (clsName) label = label.replace(/\bself\./g, clsName + '.');
+
+    return label;
   }
 
   private range(n: Parser.SyntaxNode): SrcRange {
@@ -437,6 +549,16 @@ export function buildCfg(
 ): Cfg {
   const b = new Builder(doc, index, currentUri, classIndex);
   b.moduleMode = moduleMode;
+  // Set self → class name if function is inside a class
+  let p: Parser.SyntaxNode | null = fn.parent;
+  while (p) {
+    if (p.type === 'class_definition') {
+      const cn = p.childForFieldName('name')?.text;
+      if (cn) b.typeEnv.set('self', cn);
+      break;
+    }
+    p = p.parent;
+  }
   const body = fn.childForFieldName('body') ?? fn;
   const frontier = b.block(body, ['entry']);
   b.link(frontier, b.exitId);

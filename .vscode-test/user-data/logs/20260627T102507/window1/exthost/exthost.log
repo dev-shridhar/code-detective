@@ -1,0 +1,17 @@
+2026-06-27 10:25:09.178 [info] Extension host with pid 50051 started
+2026-06-27 10:25:09.178 [info] Skipping acquiring lock for /Users/shridharkulkakrni/code-detective/.vscode-test/user-data/User/workspaceStorage/8ae48e0c63ff7f2b9d8bd2505a937283.
+2026-06-27 10:25:09.205 [info] ExtensionService#_doActivateExtension vscode.github-authentication, startup: false, activationEvent: 'onAuthenticationRequest:github'
+2026-06-27 10:25:09.222 [info] ExtensionService#_doActivateExtension vscode.emmet, startup: false, activationEvent: 'onLanguage'
+2026-06-27 10:25:09.246 [info] ExtensionService#_doActivateExtension vscode.git-base, startup: true, activationEvent: '*', root cause: vscode.git
+2026-06-27 10:25:09.248 [info] ExtensionService#_doActivateExtension vscode.git, startup: true, activationEvent: '*'
+2026-06-27 10:25:09.273 [info] ExtensionService#_doActivateExtension vscode.github, startup: true, activationEvent: '*'
+2026-06-27 10:25:09.362 [warning] [vscode.git] Accessing a resource scoped configuration without providing a resource is not expected. To get the effective value for 'git.openRepositoryInParentFolders', provide the URI of a resource or 'null' for any resource.
+2026-06-27 10:25:09.362 [warning] [vscode.git] Accessing a resource scoped configuration without providing a resource is not expected. To get the effective value for 'git.showProgress', provide the URI of a resource or 'null' for any resource.
+2026-06-27 10:25:09.369 [info] Eager extensions activated
+2026-06-27 10:25:09.373 [info] ExtensionService#_doActivateExtension vscode.debug-auto-launch, startup: false, activationEvent: 'onStartupFinished'
+2026-06-27 10:25:09.375 [info] ExtensionService#_doActivateExtension vscode.merge-conflict, startup: false, activationEvent: 'onStartupFinished'
+2026-06-27 10:25:11.416 [info] ExtensionService#_doActivateExtension dev-shridhar.code-detective, startup: false, activationEvent: 'onCommand:codedetective.showCodeFlow'
+2026-06-27 10:25:11.433 [warning] Accessing a resource scoped configuration without providing a resource is not expected. To get the effective value for 'search.useIgnoreFiles', provide the URI of a resource or 'null' for any resource.
+2026-06-27 10:25:11.433 [warning] Accessing a resource scoped configuration without providing a resource is not expected. To get the effective value for 'search.useIgnoreFiles', provide the URI of a resource or 'null' for any resource.
+2026-06-27 10:26:01.398 [info] Extension host terminating: received terminate message from renderer
+2026-06-27 10:26:01.410 [info] Extension host with pid 50051 exiting with code 0

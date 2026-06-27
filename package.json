@@ -1,8 +1,8 @@
 {
-  "name": "code-detective",
+  "name": "codedetective",
   "displayName": "CodeDetective",
-  "description": "Interactive control-flow graphs and entity-relationship diagrams for Python code",
-  "version": "0.3.0",
+  "description": "Interactive control-flow graphs for Python code. ERD diagrams coming in a future release!",
+  "version": "0.4.1",
   "publisher": "dev-shridhar",
   "repository": {
     "type": "git",
@@ -24,21 +24,12 @@
       {
         "command": "codedetective.showCodeFlow",
         "title": "CodeDetective: Show code flow"
-      },
-      {
-        "command": "codedetective.showErd",
-        "title": "CodeDetective: Show ERD"
       }
     ],
     "menus": {
       "editor/context": [
         {
           "command": "codedetective.showCodeFlow",
-          "when": "editorLangId == python",
-          "group": "navigation"
-        },
-        {
-          "command": "codedetective.showErd",
           "when": "editorLangId == python",
           "group": "navigation"
         }
@@ -52,9 +43,12 @@
     "vscode:prepublish": "npm run build"
   },
   "devDependencies": {
+    "@types/jsdom": "^28.0.3",
     "@types/node": "^20.0.0",
     "@types/vscode": "^1.90.0",
+    "@vscode/test-electron": "^3.0.0",
     "esbuild": "^0.24.0",
+    "jsdom": "^29.1.1",
     "typescript": "^5.5.0"
   },
   "dependencies": {

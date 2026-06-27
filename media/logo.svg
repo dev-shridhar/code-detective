@@ -1,0 +1,33 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="128" height="128" viewBox="0 0 128 128">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#2d2d2d"/>
+      <stop offset="100%" stop-color="#181818"/>
+    </linearGradient>
+  </defs>
+  
+  <rect x="2" y="2" width="124" height="124" rx="22" fill="url(#bg)"/>
+  
+  <!-- magnifying glass circle -->
+  <circle cx="62" cy="56" r="34" fill="none" stroke="#42a5f5" stroke-width="3"/>
+  
+  <!-- glass sheen -->
+  <path d="M 36 44 A 30 30 0 0 1 52 30" stroke="rgba(255,255,255,0.25)" stroke-width="3" fill="none" stroke-linecap="round"/>
+  
+  <!-- handle -->
+  <line x1="88" y1="82" x2="108" y2="102" stroke="#42a5f5" stroke-width="3" stroke-linecap="round"/>
+  <line x1="106" y1="100" x2="113" y2="107" stroke="#42a5f5" stroke-width="3" stroke-linecap="round"/>
+  <circle cx="112" cy="106" r="2.5" fill="#42a5f5"/>
+  
+  <!-- </> with thicker refined strokes -->
+  <!-- < -->
+  <line x1="48" y1="56" x2="55" y2="49" stroke="#4caf50" stroke-width="3" stroke-linecap="round"/>
+  <line x1="48" y1="56" x2="55" y2="63" stroke="#4caf50" stroke-width="3" stroke-linecap="round"/>
+  
+  <!-- / -->
+  <line x1="59" y1="47" x2="67" y2="65" stroke="#4caf50" stroke-width="3" stroke-linecap="round"/>
+  
+  <!-- > -->
+  <line x1="77" y1="56" x2="70" y2="49" stroke="#4caf50" stroke-width="3" stroke-linecap="round"/>
+  <line x1="77" y1="56" x2="70" y2="63" stroke="#4caf50" stroke-width="3" stroke-linecap="round"/>
+</svg>

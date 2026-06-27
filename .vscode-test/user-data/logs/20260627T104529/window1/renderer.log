@@ -1,0 +1,9 @@
+2026-06-27 10:45:30.963 [info] Started local extension host with pid 55722.
+2026-06-27 10:45:31.025 [info] [AccountPolicyGate] apply: state=inactive, reason=undefined, isRestricted=false
+2026-06-27 10:45:31.173 [info] Loading development extension at /Users/shridharkulkakrni/code-detective
+2026-06-27 10:45:31.278 [info] Settings Sync: Account status changed from uninitialized to unavailable
+2026-06-27 10:45:33.573 [info] === repository module mode: triggering CFG at /Users/shridharkulkakrni/ddd_demo/infrastructure/repository.py:1:1 ===
+2026-06-27 10:45:36.012 [info] [AccountPolicyGate] apply: state=inactive, reason=undefined, isRestricted=false
+2026-06-27 10:45:48.042 [info] === repository place_order: triggering CFG at /Users/shridharkulkakrni/ddd_demo/infrastructure/repository.py:28:5 ===
+2026-06-27 10:46:02.339 [info] === model add_item: triggering CFG at /Users/shridharkulkakrni/ddd_demo/domain/model.py:71:5 ===
+2026-06-27 10:46:14.630 [info] === All screenshots captured ===

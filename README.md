@@ -1,22 +1,34 @@
 # CodeDetective
 
-Interactive control-flow graphs and entity-relationship diagrams for Python code, rendered in a hand-drawn style directly in VS Code.
+Interactive control-flow graphs for Python code, rendered in a hand-drawn RoughJS sketchy style directly in VS Code.
+
+## Screenshots
+
+![Module view](media/screenshot-module.png)
+*Module-level CFG — all functions and classes as drillable nodes*
+
+![Place order method](media/screenshot-place_order.png)
+*Function CFG with branching, calls, and edge labels*
+
+![Add item method](media/screenshot-add_item.png)
+*Class method CFG with type-aware call resolution*
 
 ## Features
 
 - **One-click CFG** — right-click any Python function → "CodeDetective: Show code flow"
-- **One-click ERD** — right-click any Python file → "CodeDetective: Show ERD"
 - **Hand-drawn aesthetic** — RoughJS sketchy style
 - **Interactive** — pan, zoom, hover for tooltips, collapse/expand regions
-- **Call resolution** — cursor on a function call shows the callee's CFG
-- **Type-aware** — resolves `self.method()`, `obj.method()`, return type annotations, class MRO
+- **Call resolution** — click a function call to see the callee's CFG
+- **Type-aware** — resolves `self.attr.method()`, constructor calls, return type annotations
 - **Edge labels** — "Yes"/"No" on branches, exception types on try/except edges
+- **Cursor-driven** — place cursor on any call and trigger CFG to drill in
+- **Module view** — trigger CFG at module level to see all functions/classes as drillable nodes
 
 ## Usage
 
 1. Open a Python file
-2. Right-click inside any function → **CodeDetective: Show code flow**, or right-click anywhere → **CodeDetective: Show ERD**
-3. Or run from command palette (`Cmd+Shift+P`): **CodeDetective: Show code flow** / **CodeDetective: Show ERD**
+2. Right-click inside any function → **CodeDetective: Show code flow**
+3. Or run from command palette (`Cmd+Shift+P`): **CodeDetective: Show code flow**
 
 ### Graph Controls
 
@@ -33,6 +45,14 @@ Interactive control-flow graphs and entity-relationship diagrams for Python code
 
 - VS Code 1.90+
 - Python files only
+
+## What's Next
+
+- **Entity-Relationship Diagrams (ERD)** — visualize domain models, dataclasses, and relationships between entities
+- Light theme support
+- Layout direction toggle
+- More export formats (PNG, PDF)
+- TypeScript/JavaScript support
 
 ## License
 
