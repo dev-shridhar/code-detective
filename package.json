@@ -1,8 +1,8 @@
 {
   "name": "codedetective",
   "displayName": "CodeDetective",
-  "description": "Interactive control-flow graphs for Python code. ERD diagrams coming in a future release!",
-  "version": "0.4.1",
+  "description": "Instant flowcharts from your Python code. Right-click any function to see its control-flow diagram right inside VS Code.",
+  "version": "0.4.3",
   "publisher": "dev-shridhar",
   "repository": {
     "type": "git",
@@ -13,6 +13,15 @@
   "engines": {
     "vscode": "^1.90.0"
   },
+  "keywords": [
+    "python",
+    "control flow graph",
+    "cfg",
+    "diagram",
+    "flowchart",
+    "visualization",
+    "code detective"
+  ],
   "categories": [
     "Visualization",
     "Programming Languages"

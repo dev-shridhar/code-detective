@@ -1,17 +1,15 @@
 # CodeDetective
 
-Interactive control-flow graphs for Python code, rendered in a hand-drawn RoughJS sketchy style directly in VS Code.
+Instant flowcharts from your Python code. Right-click any function and see its control-flow diagram — right inside VS Code.
 
 ## Screenshots
 
-![Module view](media/screenshot-module.png)
-*Module-level CFG — all functions and classes as drillable nodes*
-
-![Place order method](media/screenshot-place_order.png)
-*Function CFG with branching, calls, and edge labels*
-
-![Add item method](media/screenshot-add_item.png)
-*Class method CFG with type-aware call resolution*
+<table>
+  <tr>
+    <td><img src="media/screenshot-function.png" alt="Function CFG"/><br/><em>Function-level CFG</em></td>
+    <td><img src="media/screenshot-module.png" alt="Module CFG"/><br/><em>Module-level view</em></td>
+  </tr>
+</table>
 
 ## Features
 
